@@ -52,6 +52,10 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [engineChoice, setEngineChoice] = useState<'auto' | '9router' | 'gemini'>('auto');
   const [selectedModel, setSelectedModel] = useState('ag/gemini-3.8-flash-high');
+  const [submittedPrompt, setSubmittedPrompt] = useState<{
+    text: string;
+    images: ImageItem[];
+  } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -133,22 +137,38 @@ export default function Home() {
   const handleSubmit = async () => {
     if (!promptText.trim() && images.length === 0) return;
 
+    const currentPromptText = promptText;
+    const currentImages = [...images];
+
     setLoading(true);
     setAnswer(null);
     setUsedEngine(null);
     setLoadingStatus(
-      images.length > 0 
-        ? `Sedang membaca & menganalisis ${images.length} gambar kuis via ${engineChoice === '9router' ? '9Router Antigravity' : 'AI Dual-Engine'}...` 
+      currentImages.length > 0 
+        ? `Sedang membaca & menganalisis ${currentImages.length} gambar kuis via ${engineChoice === '9router' ? '9Router Antigravity' : 'AI Dual-Engine'}...` 
         : 'Sedang menyusun analisis tugas...'
     );
+
+    // Set submitted prompt so it is displayed as the active question
+    setSubmittedPrompt({
+      text: currentPromptText,
+      images: currentImages,
+    });
+
+    // Clear inputs immediately so user can paste the NEXT question right away!
+    setPromptText('');
+    setImages([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
 
     try {
       const res = await fetch('/api/solve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt_text: promptText,
-          images: images.map((img) => ({
+          prompt_text: currentPromptText,
+          images: currentImages.map((img) => ({
             mimeType: img.mimeType,
             base64: img.base64,
           })),
@@ -173,6 +193,9 @@ export default function Home() {
         resultRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
     } catch (err: any) {
+      // Restore inputs on error so user doesn't lose their data
+      setPromptText(currentPromptText);
+      setImages(currentImages);
       alert(`Error: ${err.message || 'Gagal mendapatkan jawaban'}`);
     } finally {
       setLoading(false);
@@ -431,10 +454,35 @@ export default function Home() {
 
         {/* Loading Indicator */}
         {loading && (
-          <div className="p-8 rounded-2xl border border-blue-500/20 bg-blue-950/20 flex flex-col items-center justify-center gap-3 text-center animate-pulse">
+          <div className="p-6 sm:p-8 rounded-2xl border border-blue-500/20 bg-blue-950/20 flex flex-col items-center justify-center gap-4 text-center animate-pulse">
             <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
-            <p className="text-sm font-medium text-blue-300">{loadingStatus}</p>
-            <p className="text-xs text-slate-400">Memeriksa literatur modul & menyusun format mahasiswa UT...</p>
+            <div>
+              <p className="text-sm font-semibold text-blue-300">{loadingStatus}</p>
+              <p className="text-xs text-slate-400 mt-1">Memeriksa literatur modul & menyusun format mahasiswa UT...</p>
+            </div>
+
+            {submittedPrompt && (submittedPrompt.images.length > 0 || submittedPrompt.text) && (
+              <div className="max-w-md w-full bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Soal yang Sedang Dianalisis:</span>
+                {submittedPrompt.images.length > 0 && (
+                  <div className="flex gap-2 justify-center flex-wrap">
+                    {submittedPrompt.images.map((img, i) => (
+                      <img
+                        key={img.id || i}
+                        src={img.previewUrl}
+                        alt={`Soal ${i + 1}`}
+                        className="max-h-24 object-contain rounded-lg border border-blue-500/40"
+                      />
+                    ))}
+                  </div>
+                )}
+                {submittedPrompt.text && (
+                  <p className="text-xs text-slate-300 line-clamp-2 italic text-left w-full">
+                    &quot;{submittedPrompt.text}&quot;
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -442,7 +490,7 @@ export default function Home() {
         {answer && !loading && (
           <div
             ref={resultRef}
-            className="bg-[#0f172a] border border-blue-500/30 rounded-2xl p-5 sm:p-7 shadow-2xl flex flex-col gap-4 animate-fadeIn"
+            className="bg-[#0f172a] border border-blue-500/30 rounded-2xl p-5 sm:p-7 shadow-2xl flex flex-col gap-5 animate-fadeIn"
           >
             {/* Header of Answer Card */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
@@ -481,6 +529,48 @@ export default function Home() {
                 )}
               </button>
             </div>
+
+            {/* Display Submitted Question/Image as Prompt Card */}
+            {submittedPrompt && (submittedPrompt.text || submittedPrompt.images.length > 0) && (
+              <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-blue-400" />
+                    Soal yang Diajukan:
+                  </span>
+                </div>
+
+                {submittedPrompt.images.length > 0 && (
+                  <div className="flex gap-3 flex-wrap pt-1">
+                    {submittedPrompt.images.map((img, i) => (
+                      <a
+                        key={img.id || i}
+                        href={img.previewUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="group relative block rounded-xl overflow-hidden border border-slate-700 hover:border-blue-500 transition shadow-md bg-black/40"
+                        title="Klik untuk melihat ukuran penuh"
+                      >
+                        <img
+                          src={img.previewUrl}
+                          alt={`Soal #${i + 1}`}
+                          className="max-h-36 object-contain rounded p-1"
+                        />
+                        <span className="absolute bottom-1 right-1 bg-black/80 text-[10px] text-white px-2 py-0.5 rounded backdrop-blur opacity-0 group-hover:opacity-100 transition">
+                          🔍 Lihat Asli
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                {submittedPrompt.text && (
+                  <p className="text-xs sm:text-sm font-medium text-slate-200 whitespace-pre-wrap leading-relaxed">
+                    {submittedPrompt.text}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Answer Content */}
             <div className="prose prose-invert max-w-none text-slate-200 text-sm sm:text-base leading-relaxed whitespace-pre-wrap font-sans selection:bg-blue-600 selection:text-white">
@@ -531,6 +621,16 @@ export default function Home() {
                     onClick={() => {
                       setAnswer(item.answer_text);
                       setUsedEngine(item.course_category || 'Tersimpan');
+                      setSubmittedPrompt({
+                        text: item.prompt_text,
+                        images: (item.image_urls || []).map((url, i) => ({
+                          id: `hist_${i}`,
+                          name: `Gambar #${i + 1}`,
+                          mimeType: 'image/png',
+                          base64: '',
+                          previewUrl: url,
+                        })),
+                      });
                       setShowHistory(false);
                       setTimeout(() => {
                         resultRef.current?.scrollIntoView({ behavior: 'smooth' });
