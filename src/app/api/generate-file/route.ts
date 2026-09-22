@@ -1,14 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cleanMathAndTypography } from '@/lib/gemini';
 
 export const maxDuration = 30;
 
 // ─── Markdown Parser & Sanitizer ─────────────────────────────
-type BlockType = 'h1' | 'h2' | 'h3' | 'paragraph' | 'bullet' | 'numbered' | 'table' | 'empty';
+type BlockType = 'h1' | 'h2' | 'h3' | 'question' | 'answer' | 'review' | 'reference' | 'formula' | 'paragraph' | 'bullet' | 'numbered' | 'table' | 'empty';
 interface Block {
   type: BlockType;
   content: string;
   num?: number;
   rows?: string[][];
+}
+
+function pdfSafeText(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/√/g, 'sqrt')
+    .replace(/θ/g, 'theta')
+    .replace(/ω/g, 'omega')
+    .replace(/α/g, 'alpha')
+    .replace(/β/g, 'beta')
+    .replace(/Δ/g, 'Delta')
+    .replace(/π/g, 'pi')
+    .replace(/λ/g, 'lambda')
+    .replace(/⁺/g, '+')
+    .replace(/⁻/g, '-')
+    .replace(/₀/g, '0')
+    .replace(/₁/g, '1')
+    .replace(/₂/g, '2');
 }
 
 function stripMarkdownSymbols(text: string): string {
@@ -61,7 +80,8 @@ function parseInlineRuns(rawText: string): InlineRun[] {
   return runs.length > 0 ? runs : [{ text: rawText.replace(/[\*#]/g, '') }];
 }
 
-function parseMarkdown(text: string): Block[] {
+function parseMarkdown(rawContent: string): Block[] {
+  const text = cleanMathAndTypography(rawContent);
   const lines = text.split('\n');
   const blocks: Block[] = [];
   let i = 0;
@@ -69,12 +89,11 @@ function parseMarkdown(text: string): Block[] {
   while (i < lines.length) {
     const t = lines[i].trim();
     if (!t) {
-      blocks.push({ type: 'empty', content: '' });
       i++;
       continue;
     }
 
-    // Table parsing
+    // 1. Table parsing
     if (t.startsWith('|') && t.endsWith('|')) {
       const rows: string[][] = [];
       while (i < lines.length && lines[i].trim().startsWith('|')) {
@@ -88,9 +107,9 @@ function parseMarkdown(text: string): Block[] {
       continue;
     }
 
-    // Standard markdown headings
-    if (t.startsWith('# ')) {
-      blocks.push({ type: 'h1', content: stripMarkdownSymbols(t.slice(2)) });
+    // 2. Headings (# or BAGIAN / BAB)
+    if (t.startsWith('# ') || /^(BAGIAN\s+[IVXLCDM\d]+|BAB\s+[IVXLCDM\d]+)/i.test(t)) {
+      blocks.push({ type: 'h1', content: stripMarkdownSymbols(t.replace(/^#\s*/, '')) });
       i++;
       continue;
     }
@@ -105,7 +124,7 @@ function parseMarkdown(text: string): Block[] {
       continue;
     }
 
-    // Bold lines that act as headings like **1. Rekonseptualisasi Dimensi Transformasional dalam Konteks Digital**
+    // Bold lines that act as section headings
     const fullBoldMatch = t.match(/^\*{2,3}(.+?)\*{2,3}$/);
     if (fullBoldMatch) {
       const inner = fullBoldMatch[1].trim();
@@ -114,7 +133,48 @@ function parseMarkdown(text: string): Block[] {
       continue;
     }
 
-    // Bullet points: - item, * item, • item
+    // 3. Question identifiers: Soal 1, Soal 2, Nomor 1, Kasus 1
+    if (/^(Soal\s+\d+|Nomor\s+\d+|Kasus\s+\d+|Pertanyaan\s+\d+)/i.test(t)) {
+      blocks.push({ type: 'question', content: stripMarkdownSymbols(t) });
+      i++;
+      continue;
+    }
+
+    // 4. Answer lines: Jawaban: B. 45 meter
+    if (/^(Jawaban\s*:|Kunci\s*:)/i.test(t)) {
+      blocks.push({ type: 'answer', content: t });
+      i++;
+      continue;
+    }
+
+    // 5. Review lines: Ulasan: ... or Pembahasan: ...
+    if (/^(Ulasan\s*:|Pembahasan\s*:|Penjelasan\s*:)/i.test(t)) {
+      blocks.push({ type: 'review', content: t });
+      i++;
+      continue;
+    }
+
+    // 6. Reference lines: Referensi: ... or Daftar Referensi: ...
+    if (/^(Referensi\s*:|Daftar\s+Referensi|Daftar\s+Pustaka)/i.test(t)) {
+      blocks.push({ type: 'reference', content: t });
+      i++;
+      continue;
+    }
+
+    // 7. Formula / Mathematical derivation line
+    const isFormula = (
+      t.length < 85 &&
+      t.includes('=') &&
+      !/(adalah|karena|dengan|sehingga|maka|bahwa|pada|untuk|terletak|berdasarkan)/i.test(t) &&
+      /[0-9+\-*\/²³½¼√θωαβπ∂()]/i.test(t)
+    );
+    if (isFormula) {
+      blocks.push({ type: 'formula', content: t });
+      i++;
+      continue;
+    }
+
+    // 8. Bullet points: - item, * item, • item
     if (/^[-*•]\s+/.test(t)) {
       const content = t.replace(/^[-*•]\s+/, '');
       blocks.push({ type: 'bullet', content });
@@ -122,7 +182,7 @@ function parseMarkdown(text: string): Block[] {
       continue;
     }
 
-    // Numbered list items: 1. item or 1) item
+    // 9. Numbered list items: 1. item or 1) item
     const nm = t.match(/^(\d+)[\.\)]\s+(.+)/);
     if (nm) {
       blocks.push({ type: 'numbered', content: nm[2], num: parseInt(nm[1], 10) });
@@ -130,7 +190,7 @@ function parseMarkdown(text: string): Block[] {
       continue;
     }
 
-    // Standard paragraph
+    // 10. Standard paragraph
     blocks.push({ type: 'paragraph', content: t });
     i++;
   }
@@ -144,7 +204,7 @@ async function buildDocx(content: string): Promise<Buffer> {
   const blocks = parseMarkdown(content);
   const children: InstanceType<typeof Paragraph>[] = [];
 
-  const toRuns = (rawText: string, baseSize = 24, baseFont = 'Calibri'): InstanceType<typeof TextRun>[] => {
+  const toRuns = (rawText: string, baseSize = 24, baseFont = 'Calibri', baseColor = '0f172a'): InstanceType<typeof TextRun>[] => {
     const runs = parseInlineRuns(rawText);
     return runs.map(r => new TextRun({
       text: r.text,
@@ -152,7 +212,7 @@ async function buildDocx(content: string): Promise<Buffer> {
       italics: r.italics,
       size: baseSize,
       font: baseFont,
-      color: '0f172a',
+      color: baseColor,
     }));
   };
 
@@ -161,51 +221,116 @@ async function buildDocx(content: string): Promise<Buffer> {
       case 'h1':
         children.push(new Paragraph({
           heading: HeadingLevel.HEADING_1,
-          children: [new TextRun({ text: block.content, bold: true, size: 32, font: 'Calibri', color: '0f172a' })],
-          spacing: { before: 400, after: 200 },
+          children: [new TextRun({ text: block.content, bold: true, size: 28, font: 'Calibri', color: '0f2944' })],
+          spacing: { before: 360, after: 140 },
         }));
         break;
+
       case 'h2':
         children.push(new Paragraph({
           heading: HeadingLevel.HEADING_2,
-          children: [new TextRun({ text: block.content, bold: true, size: 26, font: 'Calibri', color: '0f172a' })],
-          spacing: { before: 320, after: 160 },
+          children: [new TextRun({ text: block.content, bold: true, size: 25, font: 'Calibri', color: '1e293b' })],
+          spacing: { before: 260, after: 100 },
         }));
         break;
+
       case 'h3':
         children.push(new Paragraph({
           heading: HeadingLevel.HEADING_3,
-          children: [new TextRun({ text: block.content, bold: true, size: 24, font: 'Calibri', color: '0f172a' })],
-          spacing: { before: 240, after: 120 },
+          children: [new TextRun({ text: block.content, bold: true, size: 24, font: 'Calibri', color: '334155' })],
+          spacing: { before: 200, after: 80 },
         }));
         break;
-      case 'paragraph':
+
+      case 'question':
         children.push(new Paragraph({
-          children: toRuns(block.content, 24, 'Calibri'),
-          spacing: { before: 120, after: 120, line: 360 },
+          children: [new TextRun({ text: block.content, bold: true, size: 26, font: 'Calibri', color: '0f2944' })],
+          spacing: { before: 240, after: 60 },
+        }));
+        break;
+
+      case 'answer': {
+        const colonIdx = block.content.indexOf(':');
+        let runs: InstanceType<typeof TextRun>[] = [];
+        if (colonIdx !== -1) {
+          const prefix = block.content.slice(0, colonIdx + 1);
+          const rest = block.content.slice(colonIdx + 1);
+          runs = [
+            new TextRun({ text: prefix, bold: true, size: 24, font: 'Calibri', color: '1e3a8a' }),
+            new TextRun({ text: rest, bold: true, size: 24, font: 'Calibri', color: '0f172a' }),
+          ];
+        } else {
+          runs = [new TextRun({ text: block.content, bold: true, size: 24, font: 'Calibri', color: '1e3a8a' })];
+        }
+        children.push(new Paragraph({
+          children: runs,
+          spacing: { before: 60, after: 60 },
+        }));
+        break;
+      }
+
+      case 'review': {
+        const colonIdx = block.content.indexOf(':');
+        let runs: InstanceType<typeof TextRun>[] = [];
+        if (colonIdx !== -1) {
+          const prefix = block.content.slice(0, colonIdx + 1);
+          const rest = block.content.slice(colonIdx + 1);
+          runs = [
+            new TextRun({ text: prefix + ' ', bold: true, size: 24, font: 'Calibri', color: '0f172a' }),
+            ...toRuns(rest.trimStart(), 24, 'Calibri', '1e293b'),
+          ];
+        } else {
+          runs = toRuns(block.content, 24, 'Calibri', '1e293b');
+        }
+        children.push(new Paragraph({
+          children: runs,
+          spacing: { before: 60, after: 60, line: 340 },
           alignment: AlignmentType.JUSTIFIED,
         }));
         break;
+      }
+
+      case 'reference': {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: block.content, italics: true, size: 21, font: 'Calibri', color: '475569' })],
+          spacing: { before: 40, after: 180 },
+        }));
+        break;
+      }
+
+      case 'formula': {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: block.content, bold: true, size: 23, font: 'Calibri', color: '0f172a' })],
+          indent: { left: 720 },
+          spacing: { before: 40, after: 40, line: 280 },
+        }));
+        break;
+      }
+
+      case 'paragraph':
+        children.push(new Paragraph({
+          children: toRuns(block.content, 24, 'Calibri', '0f172a'),
+          spacing: { before: 80, after: 80, line: 360 },
+          alignment: AlignmentType.JUSTIFIED,
+        }));
+        break;
+
       case 'bullet':
         children.push(new Paragraph({
           bullet: { level: 0 },
-          children: toRuns(block.content, 24, 'Calibri'),
-          spacing: { before: 60, after: 60 },
+          children: toRuns(block.content, 24, 'Calibri', '0f172a'),
+          spacing: { before: 50, after: 50, line: 320 },
         }));
         break;
+
       case 'numbered':
         children.push(new Paragraph({
           numbering: { reference: 'num-list', level: 0 },
-          children: toRuns(block.content, 24, 'Calibri'),
-          spacing: { before: 60, after: 60 },
+          children: toRuns(block.content, 24, 'Calibri', '0f172a'),
+          spacing: { before: 50, after: 50, line: 320 },
         }));
         break;
-      case 'empty':
-        children.push(new Paragraph({
-          children: [new TextRun({ text: '', size: 18 })],
-          spacing: { before: 0, after: 0 },
-        }));
-        break;
+
       case 'table':
         if (block.rows) {
           for (const [ri, row] of block.rows.entries()) {
@@ -372,18 +497,18 @@ async function buildPdf(content: string): Promise<Buffer> {
   for (const block of blocks) {
     switch (block.type) {
       case 'h1': {
-        const clean = stripMarkdownSymbols(block.content);
+        const clean = pdfSafeText(stripMarkdownSymbols(block.content));
         addPage(14);
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(15, 23, 42);
+        doc.setTextColor(15, 41, 68);
         const l = doc.splitTextToSize(clean, W);
         doc.text(l, ML, y);
         y += l.length * 7 + 4;
         break;
       }
       case 'h2': {
-        const clean = stripMarkdownSymbols(block.content);
+        const clean = pdfSafeText(stripMarkdownSymbols(block.content));
         addPage(12);
         doc.setFontSize(13);
         doc.setFont('helvetica', 'bold');
@@ -394,18 +519,73 @@ async function buildPdf(content: string): Promise<Buffer> {
         break;
       }
       case 'h3': {
-        const clean = stripMarkdownSymbols(block.content);
+        const clean = pdfSafeText(stripMarkdownSymbols(block.content));
         addPage(10);
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(15, 23, 42);
+        doc.setTextColor(51, 65, 85);
         const l = doc.splitTextToSize(clean, W);
         doc.text(l, ML, y);
         y += l.length * 6 + 2;
         break;
       }
+      case 'question': {
+        const clean = pdfSafeText(stripMarkdownSymbols(block.content));
+        addPage(11);
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 41, 68);
+        const l = doc.splitTextToSize(clean, W);
+        doc.text(l, ML, y);
+        y += l.length * 6.5 + 2.5;
+        break;
+      }
+      case 'answer': {
+        const clean = pdfSafeText(stripMarkdownSymbols(block.content));
+        addPage(8);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 58, 138);
+        const l = doc.splitTextToSize(clean, W);
+        doc.text(l, ML, y);
+        y += l.length * 5.8 + 2;
+        break;
+      }
+      case 'review': {
+        const clean = pdfSafeText(stripMarkdownSymbols(block.content));
+        addPage(8);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(15, 23, 42);
+        const l = doc.splitTextToSize(clean, W);
+        doc.text(l, ML, y);
+        y += l.length * 5.8 + 2;
+        break;
+      }
+      case 'reference': {
+        const clean = pdfSafeText(stripMarkdownSymbols(block.content));
+        addPage(8);
+        doc.setFontSize(9.5);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(71, 85, 105);
+        const l = doc.splitTextToSize(clean, W);
+        doc.text(l, ML, y);
+        y += l.length * 5.2 + 4;
+        break;
+      }
+      case 'formula': {
+        const clean = pdfSafeText(stripMarkdownSymbols(block.content));
+        addPage(7);
+        doc.setFontSize(10.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        const l = doc.splitTextToSize(clean, W - 10);
+        doc.text(l, ML + 10, y);
+        y += l.length * 5.5 + 2;
+        break;
+      }
       case 'paragraph': {
-        const clean = stripMarkdownSymbols(block.content);
+        const clean = pdfSafeText(stripMarkdownSymbols(block.content));
         if (!clean) break;
         addPage(8);
         doc.setFontSize(11);
@@ -417,7 +597,7 @@ async function buildPdf(content: string): Promise<Buffer> {
         break;
       }
       case 'bullet': {
-        const clean = stripMarkdownSymbols(block.content);
+        const clean = pdfSafeText(stripMarkdownSymbols(block.content));
         addPage(7);
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
@@ -430,7 +610,7 @@ async function buildPdf(content: string): Promise<Buffer> {
         break;
       }
       case 'numbered': {
-        const clean = stripMarkdownSymbols(block.content);
+        const clean = pdfSafeText(stripMarkdownSymbols(block.content));
         addPage(7);
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
@@ -449,14 +629,11 @@ async function buildPdf(content: string): Promise<Buffer> {
             doc.setFontSize(10);
             doc.setFont('helvetica', ri === 0 ? 'bold' : 'normal');
             doc.setTextColor(15, 23, 42);
-            doc.text(row.map(c => stripMarkdownSymbols(c)).join('  |  ').slice(0, 110), ML, y);
+            doc.text(row.map(c => pdfSafeText(stripMarkdownSymbols(c))).join('  |  ').slice(0, 110), ML, y);
             y += 6.5;
           }
           y += 3;
         }
-        break;
-      case 'empty':
-        y += 2.5;
         break;
     }
   }

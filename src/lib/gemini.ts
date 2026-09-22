@@ -46,17 +46,37 @@ AI murahan selalu membagi segala hal menjadi tepat 3 poin dengan panjang seragam
 - JANGAN menebar tanda bintang (*) atau (**) di setiap kalimat. Gunakan huruf tebal hanya untuk judul atau istilah kunci.
 - Format penulisan harus sebersih dan seringkas dokumen Microsoft Word.
 
+6. DILARANG KERAS FORMAT LATEX & TANDA DOLLAR ($ atau $$):
+- JANGAN PERNAH menuliskan rumus menggunakan sintaks LaTeX atau tanda dollar ($ atau $$). Jangan menulis \frac, \sqrt, \cdot, \theta, \omega, \left(, \right), h_{max}, dll.
+- Tuliskan semua rumus matematika, fisika, statistik, dan kimia dalam bentuk TEKS BERSIH dan simbol Unicode standar naskah buku cetak:
+  - Gunakan pecahan & pangkat Unicode: ½, ¼, ¾, x², x³, x⁴, v₀, H⁺, ±, ×, ÷, ≈, ≤, ≥, Δ, θ, ω, α, β, π, λ.
+  - Tulis perumusan secara natural dan mudah dibaca:
+    v = √(2gh / (1 + k))
+    Mgh = ½ M v² + ½ I ω²
+    h_max = (v₀ · sin θ)² / (2g)
+    dP/dt = rP(1 - P/K)
+    sin 37° = 0,6
+    g = 10 m/s²
+    C(10, 4) = 210
+
+7. DILARANG KERAS MONOLOG INTERNAL & RAGU-RAGU (ANTI-SELF-DOUBT):
+- DILARANG KERAS menampilkan proses berpikir bimbang, tanya-jawab dengan diri sendiri, atau monolog perdebatan seperti:
+  "Mari kita hitung ulang...", "Tunggu...", "Periksa kembali opsi...", "Apakah opsi A atau B?", "Jika komplemen adalah...", "Berarti opsi A adalah...".
+- Selesaikan seluruh perhitungan dan analisis secara internal di pikiranmu sebelum mulai menulis.
+- Teks keluaran HANYA berisi jawaban final yang lugas, mantap, terbukti, dan langkah pembuktian yang teratur tanpa keraguan sedikit pun.
+
 AUTO-DETEKSI JENIS SOAL:
 
 [JIKA SOAL PILIHAN GANDA / A-B-C-D]
+- Tulis nomor soal bersih: Soal 1, Soal 2 (tanpa tanda pagar #).
 - Baris pertama: tulis tegas opsi dan isinya (Contoh: Jawaban: B. Diferensiasi Produk).
-- Jika ada beberapa nomor soal, beri jarak bersih (Contoh: Soal 1, Soal 2) tanpa tanda pagar #.
 - Ulasan singkat (2–3 kalimat): jelaskan dasar logis jawaban tersebut dan kelemahan opsi pengecoh terdekat.
 - Referensi: 1 baris modul/buku baku.
 - Jangan bertele-tele pada soal pilihan ganda.
 
-[JIKA SOAL DISKUSI / KASUS / ESAI AKADEMIK]
-- Struktur: Pembuka berbasis argumen langsung -> Pembahasan analitis berbobot dengan sub-judul nomor bersih -> Sintesis kritis/Kesimpulan -> Daftar Referensi.
+[JIKA SOAL DISKUSI / KASUS / ESAI AKADEMIK / HITUNGAN]
+- Struktur: Pembuka berbasis argumen/konsep langsung -> Penurunan matematis atau pembahasan analitis berbobot -> Sintesis kritis/Kesimpulan -> Daftar Referensi.
+- Jika ada penurunan rumus, tuliskan baris per baris secara teratur dan rapi.
 - Gunakan diksi akademis yang bervariasi, tajam, dan tidak berulang-ulang.
 
 [JIKA SOAL TAHAP SKRIPSI / PROPOSAL / TESIS]
@@ -65,6 +85,109 @@ AUTO-DETEKSI JENIS SOAL:
 - Kutipan langsung dibatasi ketat (utamakan parafrase bernas).
 - Rumusan masalah, pembahasan, dan kesimpulan wajib memiliki benang merah yang linier dan terukur.
 `;
+
+// Helper function to thoroughly sanitize math syntax and eliminate AI monologue slop
+export function cleanMathAndTypography(raw: string): string {
+  if (!raw) return '';
+  let s = raw;
+
+  // 1. Remove leaked chain-of-thought / monologue / self-doubt
+  s = s.replace(/\b(?:Mari hitung ulang|Tunggu\.|Periksa kembali opsi)[^.\n]*[.\n]/gi, '');
+
+  // 2. LaTeX commands & wrappers
+  s = s.replace(/\\(?:text|mathrm|mathbf)\{([^}]+)\}/g, '$1');
+  s = s.replace(/\\left\s*([(\[{])/g, '$1');
+  s = s.replace(/\\right\s*([)\]}])/g, '$1');
+
+  // 3. Operators & symbols
+  s = s.replace(/\\cdot/g, ' · ');
+  s = s.replace(/\\times/g, ' × ');
+  s = s.replace(/\\div/g, ' ÷ ');
+  s = s.replace(/\\pm/g, ' ± ');
+  s = s.replace(/\\approx/g, ' ≈ ');
+  s = s.replace(/\\leq/g, ' ≤ ').replace(/\\le\b/g, ' ≤ ');
+  s = s.replace(/\\geq/g, ' ≥ ').replace(/\\ge\b/g, ' ≥ ');
+  s = s.replace(/\\neq/g, ' ≠ ');
+  s = s.replace(/\\infty/g, ' ∞ ');
+
+  // 4. Greek letters
+  s = s.replace(/\\theta/g, 'θ').replace(/\\Theta/g, 'Θ');
+  s = s.replace(/\\omega/g, 'ω').replace(/\\Omega/g, 'Ω');
+  s = s.replace(/\\alpha/g, 'α').replace(/\\beta/g, 'β');
+  s = s.replace(/\\gamma/g, 'γ').replace(/\\Delta/g, 'Δ').replace(/\\delta/g, 'δ');
+  s = s.replace(/\\pi/g, 'π').replace(/\\lambda/g, 'λ');
+  s = s.replace(/\\mu/g, 'μ').replace(/\\sigma/g, 'σ').replace(/\\rho/g, 'ρ');
+  s = s.replace(/\\partial/g, '∂');
+
+  // 5. Fractions
+  s = s.replace(/\\frac\{1\}\{2\}/g, '½');
+  s = s.replace(/\\frac\{1\}\{4\}/g, '¼');
+  s = s.replace(/\\frac\{3\}\{4\}/g, '¾');
+  while (/\\frac\{([^{}]+)\}\{([^{}]+)\}/.test(s)) {
+    s = s.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, (_match, num, den) => {
+      const cleanNum = num.trim();
+      const cleanDen = den.trim();
+      if (/^[a-zA-Z0-9_]+$/.test(cleanNum) && /^[a-zA-Z0-9_]+$/.test(cleanDen)) {
+        return `${cleanNum}/${cleanDen}`;
+      }
+      return `(${cleanNum} / ${cleanDen})`;
+    });
+  }
+
+  // 6. Square roots
+  while (/\\sqrt\{([^{}]+)\}/.test(s)) {
+    s = s.replace(/\\sqrt\{([^{}]+)\}/g, (_m, inner) => {
+      const cleanInner = inner.trim();
+      if (cleanInner.startsWith('(') && cleanInner.endsWith(')')) {
+        return `√${cleanInner}`;
+      }
+      return `√(${cleanInner})`;
+    });
+  }
+
+  // 7. Superscripts and Degrees
+  s = s.replace(/\^\s*\\circ/g, '°');
+  s = s.replace(/\^\{\s*\\circ\s*\}/g, '°');
+  s = s.replace(/\^\{\s*([0-9+\-n]+)\s*\}/g, (_m, p) => {
+    const map: Record<string, string> = { '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','n':'ⁿ' };
+    return p.split('').map((c: string) => map[c] || c).join('');
+  });
+  s = s.replace(/\^([0-9+\-n])/g, (_m, c) => {
+    const map: Record<string, string> = { '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','n':'ⁿ' };
+    return map[c] || `^${c}`;
+  });
+
+  // 8. Subscripts
+  s = s.replace(/_\{([a-zA-Z0-9]+)\}/g, (_m, p) => {
+    const subMap: Record<string, string> = { '0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉' };
+    if (/^[0-9]+$/.test(p)) return p.split('').map((c: string) => subMap[c] || c).join('');
+    return `_${p}`;
+  });
+  s = s.replace(/_([0-9])/g, (_m, c) => {
+    const subMap: Record<string, string> = { '0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉' };
+    return subMap[c] || `_${c}`;
+  });
+
+  // 9. Standard math functions
+  s = s.replace(/\\(sin|cos|tan|cot|sec|csc|ln|log|exp|lim)\b/g, '$1');
+
+  // 10. Outer $ delimiters
+  s = s.replace(/\$\$([^$]+)\$\$/g, '$1');
+  s = s.replace(/\$([^$\n]+)\$/g, '$1');
+  s = s.replace(/\$/g, '');
+
+  // 11. Normalize spaces & fraction spacing
+  s = s.replace(/([½¼¾])([a-zA-Z])/g, '$1 $2');
+  s = s.replace(/[ \t]+/g, ' ');
+  s = s.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
+  s = s.replace(/\s*·\s*/g, ' · ');
+  s = s.replace(/\s*=\s*/g, ' = ');
+
+  // 12. Collapse multiple blank lines
+  s = s.replace(/\n{3,}/g, '\n\n');
+
+  return s.trim();
+}
 
 // 1. Solver via 9Router (Default: ag/gemini-3.8-flash-high for vision or ag/claude-sonnet-4-6 for text)
 export async function ask9Router(

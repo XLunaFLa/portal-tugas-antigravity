@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { solveWithDualEngine, ImagePart } from '@/lib/gemini';
+import { solveWithDualEngine, cleanMathAndTypography, ImagePart } from '@/lib/gemini';
 import { uploadImageBuffer, saveRecord } from '@/lib/supabase';
 
 export const maxDuration = 60; // Allow sufficient time for multimodal reasoning
@@ -59,12 +59,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Call Dual-Engine (9Router Antigravity OAuth with Google Cloud Fallback)
-    const { answer, usedEngine } = await solveWithDualEngine(
+    const { answer: rawAnswer, usedEngine } = await solveWithDualEngine(
       combinedPrompt, 
       imageParts, 
       engine, 
       model
     );
+
+    // Thoroughly clean formulas and eliminate monologue slop
+    const answer = cleanMathAndTypography(rawAnswer);
 
     // Collect uploaded image URLs
     const uploadedUrls: string[] = [];
