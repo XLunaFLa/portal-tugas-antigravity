@@ -398,7 +398,9 @@ export default function Home() {
     const cleanAnswer = answer
       .replace(/^#{1,6}\s+/gm, '') // Remove ### heading
       .replace(/\*\*(.+?)\*\*/g, '$1') // Remove **bold**
-      .replace(/\*(.+?)\*/g, '$1'); // Remove *italic*
+      .replace(/\*(.+?)\*/g, '$1') // Remove *italic*
+      .replace(/_{1,2}(.+?)_{1,2}/g, '$1') // Remove _italic_
+      .replace(/[\*#]/g, ''); // Remove any stray asterisks or hashes
     navigator.clipboard.writeText(cleanAnswer);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);

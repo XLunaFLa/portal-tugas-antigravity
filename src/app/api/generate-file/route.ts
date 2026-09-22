@@ -2,100 +2,293 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const maxDuration = 30;
 
-// ─── Markdown Parser (Server-side copy) ─────────────────────
+// ─── Markdown Parser & Sanitizer ─────────────────────────────
 type BlockType = 'h1' | 'h2' | 'h3' | 'paragraph' | 'bullet' | 'numbered' | 'table' | 'empty';
-interface Block { type: BlockType; content: string; num?: number; rows?: string[][] }
+interface Block {
+  type: BlockType;
+  content: string;
+  num?: number;
+  rows?: string[][];
+}
 
-function strip(text: string): string {
-  return text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1')
-    .replace(/`(.+?)`/g, '$1').replace(/\[(.+?)\]\(.+?\)/g, '$1').trim();
+function stripMarkdownSymbols(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/_{1,2}(.+?)_{1,2}/g, '$1')
+    .replace(/^#{1,6}\s*/, '')
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+    .replace(/[\*#]/g, '') // remove any stray unclosed asterisks or hashes
+    .trim();
+}
+
+interface InlineRun {
+  text: string;
+  bold?: boolean;
+  italics?: boolean;
+}
+
+function parseInlineRuns(rawText: string): InlineRun[] {
+  if (!rawText) return [];
+  const pattern = /(\*\*[^*]+?\*\*|\*[^*]+?\*)/g;
+  const runs: InlineRun[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(rawText)) !== null) {
+    if (match.index > lastIndex) {
+      const normal = rawText.slice(lastIndex, match.index).replace(/[\*#]/g, '');
+      if (normal) runs.push({ text: normal });
+    }
+    const token = match[0];
+    if (token.startsWith('**') && token.endsWith('**')) {
+      const boldText = token.slice(2, -2).replace(/[\*#]/g, '');
+      if (boldText) runs.push({ text: boldText, bold: true });
+    } else if (token.startsWith('*') && token.endsWith('*')) {
+      const italicText = token.slice(1, -1).replace(/[\*#]/g, '');
+      if (italicText) runs.push({ text: italicText, italics: true });
+    }
+    lastIndex = pattern.lastIndex;
+  }
+
+  if (lastIndex < rawText.length) {
+    const remaining = rawText.slice(lastIndex).replace(/[\*#]/g, '');
+    if (remaining) runs.push({ text: remaining });
+  }
+
+  return runs.length > 0 ? runs : [{ text: rawText.replace(/[\*#]/g, '') }];
 }
 
 function parseMarkdown(text: string): Block[] {
   const lines = text.split('\n');
   const blocks: Block[] = [];
   let i = 0;
+
   while (i < lines.length) {
     const t = lines[i].trim();
-    if (!t) { blocks.push({ type: 'empty', content: '' }); i++; continue; }
+    if (!t) {
+      blocks.push({ type: 'empty', content: '' });
+      i++;
+      continue;
+    }
+
+    // Table parsing
     if (t.startsWith('|') && t.endsWith('|')) {
       const rows: string[][] = [];
       while (i < lines.length && lines[i].trim().startsWith('|')) {
         const row = lines[i].trim();
-        if (!/^[\|\-\s]+$/.test(row)) rows.push(row.split('|').slice(1, -1).map(c => strip(c)));
+        if (!/^[\|\-\s]+$/.test(row)) {
+          rows.push(row.split('|').slice(1, -1).map(c => stripMarkdownSymbols(c)));
+        }
         i++;
       }
       if (rows.length) blocks.push({ type: 'table', content: '', rows });
       continue;
     }
-    if (t.startsWith('# '))   { blocks.push({ type: 'h1', content: strip(t.slice(2)) }); i++; continue; }
-    if (t.startsWith('## '))  { blocks.push({ type: 'h2', content: strip(t.slice(3)) }); i++; continue; }
-    if (t.startsWith('### ')) { blocks.push({ type: 'h3', content: strip(t.slice(4)) }); i++; continue; }
-    if (t.startsWith('- ') || t.startsWith('* ') || t.startsWith('• '))
-      { blocks.push({ type: 'bullet', content: strip(t.slice(2)) }); i++; continue; }
-    const nm = t.match(/^(\d+)\.\s+(.+)/);
-    if (nm) { blocks.push({ type: 'numbered', content: strip(nm[2]), num: parseInt(nm[1]) }); i++; continue; }
+
+    // Standard markdown headings
+    if (t.startsWith('# ')) {
+      blocks.push({ type: 'h1', content: stripMarkdownSymbols(t.slice(2)) });
+      i++;
+      continue;
+    }
+    if (t.startsWith('## ')) {
+      blocks.push({ type: 'h2', content: stripMarkdownSymbols(t.slice(3)) });
+      i++;
+      continue;
+    }
+    if (t.startsWith('### ')) {
+      blocks.push({ type: 'h3', content: stripMarkdownSymbols(t.slice(4)) });
+      i++;
+      continue;
+    }
+
+    // Bold lines that act as headings like **1. Rekonseptualisasi Dimensi Transformasional dalam Konteks Digital**
+    const fullBoldMatch = t.match(/^\*{2,3}(.+?)\*{2,3}$/);
+    if (fullBoldMatch) {
+      const inner = fullBoldMatch[1].trim();
+      blocks.push({ type: 'h2', content: stripMarkdownSymbols(inner) });
+      i++;
+      continue;
+    }
+
+    // Bullet points: - item, * item, • item
+    if (/^[-*•]\s+/.test(t)) {
+      const content = t.replace(/^[-*•]\s+/, '');
+      blocks.push({ type: 'bullet', content });
+      i++;
+      continue;
+    }
+
+    // Numbered list items: 1. item or 1) item
+    const nm = t.match(/^(\d+)[\.\)]\s+(.+)/);
+    if (nm) {
+      blocks.push({ type: 'numbered', content: nm[2], num: parseInt(nm[1], 10) });
+      i++;
+      continue;
+    }
+
+    // Standard paragraph
     blocks.push({ type: 'paragraph', content: t });
     i++;
   }
+
   return blocks;
 }
 
-// ─── Word Generator ──────────────────────────────────────────
+// ─── Word Generator (DOCX) ───────────────────────────────────
 async function buildDocx(content: string): Promise<Buffer> {
   const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import('docx');
   const blocks = parseMarkdown(content);
   const children: InstanceType<typeof Paragraph>[] = [];
 
+  const toRuns = (rawText: string, baseSize = 24, baseFont = 'Calibri'): InstanceType<typeof TextRun>[] => {
+    const runs = parseInlineRuns(rawText);
+    return runs.map(r => new TextRun({
+      text: r.text,
+      bold: r.bold,
+      italics: r.italics,
+      size: baseSize,
+      font: baseFont,
+      color: '0f172a',
+    }));
+  };
+
   for (const block of blocks) {
     switch (block.type) {
-      case 'h1': children.push(new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: block.content, bold: true, size: 36, color: '0f2944' })], spacing: { before: 480, after: 240 } })); break;
-      case 'h2': children.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun({ text: block.content, bold: true, size: 28, color: '1d4ed8' })], spacing: { before: 360, after: 180 } })); break;
-      case 'h3': children.push(new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun({ text: block.content, bold: true, size: 24, color: '1e40af' })], spacing: { before: 280, after: 120 } })); break;
-      case 'paragraph': children.push(new Paragraph({ children: [new TextRun({ text: block.content, size: 24 })], spacing: { before: 120, after: 120, line: 360 }, alignment: AlignmentType.JUSTIFIED })); break;
-      case 'bullet': children.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text: block.content, size: 24 })], spacing: { before: 60, after: 60 } })); break;
-      case 'numbered': children.push(new Paragraph({ numbering: { reference: 'num-list', level: 0 }, children: [new TextRun({ text: block.content, size: 24 })], spacing: { before: 60, after: 60 } })); break;
-      case 'empty': children.push(new Paragraph({ children: [new TextRun({ text: '', size: 18 })], spacing: { before: 0, after: 0 } })); break;
-      case 'table': if (block.rows) { for (const [ri, row] of block.rows.entries()) children.push(new Paragraph({ children: [new TextRun({ text: row.join('  |  '), size: 22, bold: ri === 0 })], spacing: { before: 40, after: 40 } })); } break;
+      case 'h1':
+        children.push(new Paragraph({
+          heading: HeadingLevel.HEADING_1,
+          children: [new TextRun({ text: block.content, bold: true, size: 32, font: 'Calibri', color: '0f172a' })],
+          spacing: { before: 400, after: 200 },
+        }));
+        break;
+      case 'h2':
+        children.push(new Paragraph({
+          heading: HeadingLevel.HEADING_2,
+          children: [new TextRun({ text: block.content, bold: true, size: 26, font: 'Calibri', color: '0f172a' })],
+          spacing: { before: 320, after: 160 },
+        }));
+        break;
+      case 'h3':
+        children.push(new Paragraph({
+          heading: HeadingLevel.HEADING_3,
+          children: [new TextRun({ text: block.content, bold: true, size: 24, font: 'Calibri', color: '0f172a' })],
+          spacing: { before: 240, after: 120 },
+        }));
+        break;
+      case 'paragraph':
+        children.push(new Paragraph({
+          children: toRuns(block.content, 24, 'Calibri'),
+          spacing: { before: 120, after: 120, line: 360 },
+          alignment: AlignmentType.JUSTIFIED,
+        }));
+        break;
+      case 'bullet':
+        children.push(new Paragraph({
+          bullet: { level: 0 },
+          children: toRuns(block.content, 24, 'Calibri'),
+          spacing: { before: 60, after: 60 },
+        }));
+        break;
+      case 'numbered':
+        children.push(new Paragraph({
+          numbering: { reference: 'num-list', level: 0 },
+          children: toRuns(block.content, 24, 'Calibri'),
+          spacing: { before: 60, after: 60 },
+        }));
+        break;
+      case 'empty':
+        children.push(new Paragraph({
+          children: [new TextRun({ text: '', size: 18 })],
+          spacing: { before: 0, after: 0 },
+        }));
+        break;
+      case 'table':
+        if (block.rows) {
+          for (const [ri, row] of block.rows.entries()) {
+            children.push(new Paragraph({
+              children: [new TextRun({
+                text: row.join('  |  '),
+                size: 22,
+                bold: ri === 0,
+                font: 'Calibri',
+                color: '0f172a',
+              })],
+              spacing: { before: 40, after: 40 },
+            }));
+          }
+        }
+        break;
     }
   }
 
   const doc = new Document({
-    numbering: { config: [{ reference: 'num-list', levels: [{ level: 0, format: 'decimal' as any, text: '%1.', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] }] },
-    sections: [{ properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1800 } } }, children }],
+    numbering: {
+      config: [{
+        reference: 'num-list',
+        levels: [{
+          level: 0,
+          format: 'decimal' as any,
+          text: '%1.',
+          alignment: AlignmentType.LEFT,
+          style: { paragraph: { indent: { left: 720, hanging: 360 } } }
+        }]
+      }]
+    },
+    sections: [{
+      properties: {
+        page: {
+          margin: { top: 1440, right: 1440, bottom: 1440, left: 1800 }
+        }
+      },
+      children,
+    }],
   });
+
   return Packer.toBuffer(doc);
 }
 
-// ─── Excel Generator ─────────────────────────────────────────
+// ─── Excel Generator (XLSX) ──────────────────────────────────
 async function buildXlsx(content: string): Promise<Buffer> {
   const XLSX = await import('xlsx');
   const blocks = parseMarkdown(content);
   const wb = XLSX.utils.book_new();
   const tables = blocks.filter(b => b.type === 'table' && b.rows?.length);
+
   if (tables.length > 0) {
     tables.forEach((t, idx) => {
-      const ws = XLSX.utils.aoa_to_sheet(t.rows!);
-      ws['!cols'] = Array.from({ length: (t.rows![0] || []).length }, () => ({ wch: 30 }));
+      const cleanRows = t.rows!.map(r => r.map(c => stripMarkdownSymbols(c)));
+      const ws = XLSX.utils.aoa_to_sheet(cleanRows);
+      ws['!cols'] = Array.from({ length: (cleanRows[0] || []).length }, () => ({ wch: 30 }));
       XLSX.utils.book_append_sheet(wb, ws, `Tabel ${idx + 1}`);
     });
   } else {
     const rows: (string | number)[][] = [['No.', 'Konten', 'Keterangan']];
     let no = 1;
     for (const b of blocks) {
-      if (b.type === 'h1' || b.type === 'h2' || b.type === 'h3') rows.push(['', `=== ${b.content} ===`, '']);
-      else if (b.type === 'paragraph') rows.push([no++, b.content, 'Paragraf']);
-      else if (b.type === 'bullet') rows.push([no++, `• ${b.content}`, 'Poin']);
-      else if (b.type === 'numbered') rows.push([b.num ?? no++, b.content, 'Nomor']);
+      const clean = stripMarkdownSymbols(b.content);
+      if (b.type === 'h1' || b.type === 'h2' || b.type === 'h3') {
+        rows.push(['', `=== ${clean} ===`, '']);
+      } else if (b.type === 'paragraph' && clean) {
+        rows.push([no++, clean, 'Paragraf']);
+      } else if (b.type === 'bullet' && clean) {
+        rows.push([no++, `• ${clean}`, 'Poin']);
+      } else if (b.type === 'numbered' && clean) {
+        rows.push([b.num ?? no++, clean, 'Nomor']);
+      }
     }
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 6 }, { wch: 80 }, { wch: 12 }];
     XLSX.utils.book_append_sheet(wb, ws, 'Konten');
   }
+
   return Buffer.from(XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' }));
 }
 
-// ─── PowerPoint Generator ────────────────────────────────────
+// ─── PowerPoint Generator (PPTX) ─────────────────────────────
 async function buildPptx(content: string, title: string): Promise<Buffer> {
   const PptxGenJS = (await import('pptxgenjs')).default;
   const pptx = new PptxGenJS();
@@ -106,24 +299,35 @@ async function buildPptx(content: string, title: string): Promise<Buffer> {
   interface SlideData { title: string; items: { text: string; isBullet: boolean }[] }
   const slides: SlideData[] = [];
   let cur: SlideData | null = null;
+
   for (const block of blocks) {
     if (block.type === 'h1') continue;
-    if (block.type === 'h2' || block.type === 'h3') { if (cur) slides.push(cur); cur = { title: block.content, items: [] }; }
-    else if (cur) {
-      if (block.type === 'bullet' || block.type === 'numbered') cur.items.push({ text: block.content, isBullet: true });
-      else if (block.type === 'paragraph' && block.content.length > 2) cur.items.push({ text: block.content, isBullet: false });
-    } else if (block.type === 'paragraph' && block.content.length > 2) {
-      if (!cur) cur = { title: 'Pendahuluan', items: [] };
-      cur.items.push({ text: block.content, isBullet: false });
+    if (block.type === 'h2' || block.type === 'h3') {
+      if (cur) slides.push(cur);
+      cur = { title: stripMarkdownSymbols(block.content), items: [] };
+    } else if (cur) {
+      const clean = stripMarkdownSymbols(block.content);
+      if (clean) {
+        if (block.type === 'bullet' || block.type === 'numbered') cur.items.push({ text: clean, isBullet: true });
+        else if (block.type === 'paragraph' && clean.length > 2) cur.items.push({ text: clean, isBullet: false });
+      }
+    } else if (block.type === 'paragraph') {
+      const clean = stripMarkdownSymbols(block.content);
+      if (clean && clean.length > 2) {
+        if (!cur) cur = { title: 'Pendahuluan', items: [] };
+        cur.items.push({ text: clean, isBullet: false });
+      }
     }
   }
   if (cur) slides.push(cur);
-  // Title slide
+
+  // Title slide (Clean academic presentation — NO AI watermark/branding)
   const ts = pptx.addSlide();
   ts.background = { fill: NAVY };
   ts.addShape('RECTANGLE' as any, { x: 0, y: 4.2, w: '100%', h: 0.07, fill: { color: BLUE }, line: { type: 'none' as any } });
-  ts.addText(titleBlock?.content || title, { x: 0.8, y: 1.4, w: 8.4, h: 2.0, fontSize: 34, bold: true, color: WHITE, align: 'center', fontFace: 'Calibri', wrap: true });
-  ts.addText('Portal Tugas Antigravity', { x: 0.8, y: 3.6, w: 8.4, h: 0.5, fontSize: 13, color: 'a0c4ff', align: 'center', italic: true, fontFace: 'Calibri' });
+  const cleanTitle = stripMarkdownSymbols(titleBlock?.content || title.replace(/_/g, ' '));
+  ts.addText(cleanTitle, { x: 0.8, y: 1.8, w: 8.4, h: 2.0, fontSize: 32, bold: true, color: WHITE, align: 'center', fontFace: 'Calibri', wrap: true });
+
   // Content slides
   slides.forEach((slide, idx) => {
     const s = pptx.addSlide();
@@ -132,11 +336,22 @@ async function buildPptx(content: string, title: string): Promise<Buffer> {
     s.addShape('RECTANGLE' as any, { x: 0, y: 1.15, w: '100%', h: 0.05, fill: { color: BLUE }, line: { type: 'none' as any } });
     s.addText(slide.title, { x: 0.4, y: 0.1, w: 8.8, h: 1.0, fontSize: 22, bold: true, color: WHITE, valign: 'middle', fontFace: 'Calibri', wrap: true });
     if (slide.items.length > 0) {
-      const textItems = slide.items.map(item => ({ text: item.text, options: { bullet: item.isBullet ? { type: 'bullet' as any, color: BLUE, indent: 15 } : false, fontSize: 15, color: DARK, breakLine: true, paraSpaceBefore: item.isBullet ? 4 : 8, paraSpaceAfter: item.isBullet ? 2 : 6 } }));
+      const textItems = slide.items.map(item => ({
+        text: item.text,
+        options: {
+          bullet: item.isBullet ? { type: 'bullet' as any, color: BLUE, indent: 15 } : false,
+          fontSize: 15,
+          color: DARK,
+          breakLine: true,
+          paraSpaceBefore: item.isBullet ? 4 : 8,
+          paraSpaceAfter: item.isBullet ? 2 : 6,
+        },
+      }));
       s.addText(textItems as any, { x: 0.55, y: 1.3, w: 8.9, h: 5.2, valign: 'top', fontFace: 'Calibri' });
     }
     s.addText(`${idx + 1}`, { x: 9.0, y: 6.8, w: 0.5, h: 0.3, fontSize: 9, color: '94a3b8', align: 'right' });
   });
+
   return Buffer.from(await pptx.write({ outputType: 'nodebuffer' } as any) as ArrayBuffer);
 }
 
@@ -145,27 +360,117 @@ async function buildPdf(content: string): Promise<Buffer> {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const blocks = parseMarkdown(content);
-  const ML = 25; const W = 160; let y = 30;
-  const addPage = (h: number) => { if (y + h > 277) { doc.addPage(); y = 20; } };
-  doc.setFillColor(15, 41, 68); doc.rect(0, 0, 210, 12, 'F');
-  doc.setFillColor(29, 78, 216); doc.rect(0, 12, 210, 1.5, 'F');
-  doc.setFontSize(10); doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'normal');
-  doc.text('Antigravity Academic Assistant', ML, 8);
-  y = 22;
+  const ML = 25; const W = 160; let y = 25;
+  const addPage = (h: number) => {
+    if (y + h > 270) {
+      doc.addPage();
+      y = 25;
+    }
+  };
+
+  // Standard academic paper layout: pure clean page, no headers, no watermarks
   for (const block of blocks) {
     switch (block.type) {
-      case 'h1': addPage(14); doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 41, 68); { const l = doc.splitTextToSize(block.content, W); doc.text(l, ML, y); y += l.length * 8 + 4; } break;
-      case 'h2': addPage(12); doc.setFontSize(15); doc.setFont('helvetica', 'bold'); doc.setTextColor(29, 78, 216); { const l = doc.splitTextToSize(block.content, W); doc.text(l, ML, y); y += l.length * 7 + 1; doc.setDrawColor(29, 78, 216); doc.setLineWidth(0.3); doc.line(ML, y, ML + W, y); y += 3; } break;
-      case 'h3': addPage(10); doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 64, 175); { const l = doc.splitTextToSize(block.content, W); doc.text(l, ML, y); y += l.length * 6.5 + 2; } break;
-      case 'paragraph': addPage(8); doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(15, 23, 42); { const l = doc.splitTextToSize(block.content, W); doc.text(l, ML, y); y += l.length * 6 + 3; } break;
-      case 'bullet': addPage(7); doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(15, 23, 42); doc.setFillColor(29, 78, 216); doc.circle(ML + 1.8, y - 1.8, 1, 'F'); { const l = doc.splitTextToSize(block.content, W - 8); doc.text(l, ML + 6, y); y += l.length * 6 + 2; } break;
-      case 'numbered': addPage(7); doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 23, 42); doc.text(`${block.num}.`, ML, y); doc.setFont('helvetica', 'normal'); { const l = doc.splitTextToSize(block.content, W - 9); doc.text(l, ML + 9, y); y += l.length * 6 + 2; } break;
-      case 'table': if (block.rows) { for (const [ri, row] of block.rows.entries()) { addPage(7); doc.setFontSize(10); doc.setFont('helvetica', ri === 0 ? 'bold' : 'normal'); doc.setTextColor(15, 23, 42); doc.text(row.join('  |  ').slice(0, 110), ML, y); y += 6.5; } y += 3; } break;
-      case 'empty': y += 3; break;
+      case 'h1': {
+        const clean = stripMarkdownSymbols(block.content);
+        addPage(14);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        const l = doc.splitTextToSize(clean, W);
+        doc.text(l, ML, y);
+        y += l.length * 7 + 4;
+        break;
+      }
+      case 'h2': {
+        const clean = stripMarkdownSymbols(block.content);
+        addPage(12);
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        const l = doc.splitTextToSize(clean, W);
+        doc.text(l, ML, y);
+        y += l.length * 6.5 + 3;
+        break;
+      }
+      case 'h3': {
+        const clean = stripMarkdownSymbols(block.content);
+        addPage(10);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        const l = doc.splitTextToSize(clean, W);
+        doc.text(l, ML, y);
+        y += l.length * 6 + 2;
+        break;
+      }
+      case 'paragraph': {
+        const clean = stripMarkdownSymbols(block.content);
+        if (!clean) break;
+        addPage(8);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(15, 23, 42);
+        const l = doc.splitTextToSize(clean, W);
+        doc.text(l, ML, y);
+        y += l.length * 5.8 + 3;
+        break;
+      }
+      case 'bullet': {
+        const clean = stripMarkdownSymbols(block.content);
+        addPage(7);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(15, 23, 42);
+        doc.setFillColor(71, 85, 105);
+        doc.circle(ML + 1.5, y - 1.5, 0.8, 'F');
+        const l = doc.splitTextToSize(clean, W - 8);
+        doc.text(l, ML + 6, y);
+        y += l.length * 5.8 + 2;
+        break;
+      }
+      case 'numbered': {
+        const clean = stripMarkdownSymbols(block.content);
+        addPage(7);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(`${block.num}.`, ML, y);
+        doc.setFont('helvetica', 'normal');
+        const l = doc.splitTextToSize(clean, W - 9);
+        doc.text(l, ML + 9, y);
+        y += l.length * 5.8 + 2;
+        break;
+      }
+      case 'table':
+        if (block.rows) {
+          for (const [ri, row] of block.rows.entries()) {
+            addPage(7);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', ri === 0 ? 'bold' : 'normal');
+            doc.setTextColor(15, 23, 42);
+            doc.text(row.map(c => stripMarkdownSymbols(c)).join('  |  ').slice(0, 110), ML, y);
+            y += 6.5;
+          }
+          y += 3;
+        }
+        break;
+      case 'empty':
+        y += 2.5;
+        break;
     }
   }
+
+  // Discrete page number footer
   const pageCount = doc.getNumberOfPages();
-  for (let p = 1; p <= pageCount; p++) { doc.setPage(p); doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(148, 163, 184); doc.text(`Halaman ${p} / ${pageCount}`, 105, 292, { align: 'center' }); }
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text(`${p}`, 105, 287, { align: 'center' });
+  }
+
   return Buffer.from(doc.output('arraybuffer'));
 }
 
