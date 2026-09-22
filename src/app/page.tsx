@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import {
   type FileType,
   detectRequestedFileType,
@@ -1008,6 +1010,8 @@ export default function Home() {
             {/* Answer Content — Clean Academic Typography */}
             <div className="text-slate-200 text-sm sm:text-base leading-relaxed font-sans selection:bg-slate-700 selection:text-white space-y-3 pt-2">
               <ReactMarkdown
+                remarkPlugins={[remarkMath]}
+                rehypePlugins={[rehypeKatex]}
                 components={{
                   h1: ({ ...props }) => (
                     <h1 className="text-lg sm:text-xl font-bold text-white mt-5 mb-2.5 border-b border-slate-800 pb-2" {...props} />
@@ -1016,19 +1020,22 @@ export default function Home() {
                     <h2 className="text-base sm:text-lg font-bold text-slate-100 mt-4 mb-2" {...props} />
                   ),
                   h3: ({ ...props }) => (
-                    <h3 className="text-sm sm:text-base font-semibold text-slate-200 mt-3 mb-1" {...props} />
+                    <h3 className="text-sm sm:text-base font-semibold text-blue-300 mt-4 mb-2 tracking-wide" {...props} />
                   ),
                   p: ({ ...props }) => (
                     <p className="mb-3 text-slate-200 leading-relaxed" {...props} />
                   ),
                   ul: ({ ...props }) => (
-                    <ul className="list-disc list-inside mb-3 space-y-1.5 text-slate-200 pl-1" {...props} />
+                    <ul className="list-disc list-outside pl-5 mb-3.5 space-y-2 text-slate-200" {...props} />
                   ),
                   ol: ({ ...props }) => (
-                    <ol className="list-decimal list-inside mb-3 space-y-1.5 text-slate-200 pl-1" {...props} />
+                    <ol className="list-decimal list-outside pl-5 mb-3.5 space-y-2 text-slate-200" {...props} />
                   ),
                   li: ({ ...props }) => (
-                    <li className="text-slate-200 leading-relaxed" {...props} />
+                    <li className="text-slate-200 leading-relaxed pl-1" {...props} />
+                  ),
+                  hr: ({ ...props }) => (
+                    <hr className="my-5 border-slate-800/80" {...props} />
                   ),
                   strong: ({ ...props }) => (
                     <strong className="font-semibold text-white" {...props} />

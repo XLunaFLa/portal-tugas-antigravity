@@ -41,23 +41,25 @@ AI murahan selalu membagi segala hal menjadi tepat 3 poin dengan panjang seragam
 - Sebutkan nama tokoh/peneliti dan tahun publikasi (misal: Kotler & Keller, Sudono Sukirno, Sugiyono, Kieso).
 - Berikan contoh konkret kontekstual di Indonesia bila relevan.
 
-5. KEBERSIHAN TIPOGRAFI (NO RAW MARKDOWN SLOP):
-- JANGAN menuliskan tanda pagar (# atau ## atau ###) di awal baris! Dosen tidak ingin melihat karakter kode.
-- JANGAN menebar tanda bintang (*) atau (**) di setiap kalimat. Gunakan huruf tebal hanya untuk judul atau istilah kunci.
-- Format penulisan harus sebersih dan seringkas dokumen Microsoft Word.
+5. STRUKTUR TATA LETAK ESTETIS & RAPI (STANDAR PLAYGROUND AI & CHATGPT):
+- DILARANG KERAS MENUMPUK jawaban dalam satu baris kalimat panjang yang berdempetan!
+- Setiap nomor soal WAJIB diawali dengan heading yang jelas (gunakan format: ### Soal 1, ### Soal 2).
+- Setiap sub-pertanyaan atau butir poin (a., b., c., 1., 2., dst.) WAJIB DITULIS PADA BARIS BARU TERSENDIRI menggunakan format daftar berbutir yang rapi:
+  * **a.** [Penjelasan / Rumus bagian a]
+  * **b.** [Penjelasan / Rumus bagian b]
+  * **c.** [Penjelasan / Rumus bagian c]
+- Berikan jarak kosong (1 baris kosong) antar nomor soal agar naskah terlihat berjarak, rapi, dan mudah dibaca.
 
-6. DILARANG KERAS FORMAT LATEX & TANDA DOLLAR ($ atau $$):
-- JANGAN PERNAH menuliskan rumus menggunakan sintaks LaTeX atau tanda dollar ($ atau $$). Jangan menulis \frac, \sqrt, \cdot, \theta, \omega, \left(, \right), h_{max}, dll.
-- Tuliskan semua rumus matematika, fisika, statistik, dan kimia dalam bentuk TEKS BERSIH dan simbol Unicode standar naskah buku cetak:
-  - Gunakan pecahan & pangkat Unicode: ½, ¼, ¾, x², x³, x⁴, v₀, H⁺, ±, ×, ÷, ≈, ≤, ≥, Δ, θ, ω, α, β, π, λ.
-  - Tulis perumusan secara natural dan mudah dibaca:
-    v = √(2gh / (1 + k))
-    Mgh = ½ M v² + ½ I ω²
-    h_max = (v₀ · sin θ)² / (2g)
-    dP/dt = rP(1 - P/K)
-    sin 37° = 0,6
-    g = 10 m/s²
-    C(10, 4) = 210
+6. FORMAT NOTASI MATEMATIKA, FISIKA & RUMUS ILMIAH:
+- Gunakan sintaks LaTeX standar yang bersih untuk formula matematika agar ter-render secara visual dengan sempurna oleh KaTeX di web:
+  - Gunakan $...$ untuk rumus pendek di dalam kalimat (inline math), misalnya $x = 4\text{ cm}$ atau $\sin 30^\circ = \frac{1}{2}$.
+  - Gunakan $$...$$ pada baris tersendiri untuk persamaan utama, rumus balok, dan penurunan langkah (block math), misalnya:
+    $$V(x) = x(24 - 2x)^2 = 4x^3 - 96x^2 + 576x$$
+    $$L = \int_0^5 (5x - x^2)\,dx = \frac{125}{6}\text{ satuan luas}$$
+  - Untuk matriks, selalu gunakan format standar pmatrix/bmatrix agar tampil 2 dimensi:
+    $$\begin{pmatrix} 3 & 2 \\ 5 & 4 \end{pmatrix} \begin{pmatrix} x \\ y \end{pmatrix} = \begin{pmatrix} 12 \\ 22 \end{pmatrix}$$
+  - Gunakan \frac{a}{b} untuk pecahan, \sqrt{...} untuk akar, dan \implies untuk tanda panah kesimpulan.
+- DILARANG menuliskan matriks secara mendatar menggunakan kurung siku bersambung seperti [ 3 2 ] [ x ] di dalam teks.
 
 7. DILARANG KERAS MONOLOG INTERNAL & RAGU-RAGU (ANTI-SELF-DOUBT):
 - DILARANG KERAS menampilkan proses berpikir bimbang, tanya-jawab dengan diri sendiri, atau monolog perdebatan seperti:
@@ -68,7 +70,7 @@ AI murahan selalu membagi segala hal menjadi tepat 3 poin dengan panjang seragam
 AUTO-DETEKSI JENIS SOAL:
 
 [JIKA SOAL PILIHAN GANDA / A-B-C-D]
-- Tulis nomor soal bersih: Soal 1, Soal 2 (tanpa tanda pagar #).
+- Tulis nomor soal bersih: Soal 1, Soal 2.
 - Baris pertama: tulis tegas opsi dan isinya (Contoh: Jawaban: B. Diferensiasi Produk).
 - Ulasan singkat (2–3 kalimat): jelaskan dasar logis jawaban tersebut dan kelemahan opsi pengecoh terdekat.
 - Referensi: 1 baris modul/buku baku.
@@ -86,20 +88,58 @@ AUTO-DETEKSI JENIS SOAL:
 - Rumusan masalah, pembahasan, dan kesimpulan wajib memiliki benang merah yang linier dan terukur.
 `;
 
-// Helper function to thoroughly sanitize math syntax and eliminate AI monologue slop
-export function cleanMathAndTypography(raw: string): string {
+// Helper to format answers cleanly into lines/bullets if squashed
+export function formatReadableAnswers(raw: string): string {
   if (!raw) return '';
   let s = raw;
+
+  // 1. Separate "Soal X JAWABAN = a. ..." onto clean lines with markdown heading and bold label
+  s = s.replace(/(Soal\s+\d+)\s*(JAWABAN\s*=?:?)\s*(?:([a-zA-Z]\.)\s+)?/gi, (_match, soal, ans, sub) => {
+    let out = `### ${soal}\n**${ans}**\n`;
+    if (sub) out += `* **${sub}** `;
+    return out;
+  });
+
+  // 2. Separate inline squashed sub-items: " ... b. ... c. ..." into bullet lines
+  s = s.replace(/([^\n])\s+([b-z]\.\s+)/g, '$1\n* **$2**');
+
+  // 3. Clean spacing inside bold tags e.g. **b. ** -> **b.** 
+  s = s.replace(/\*\*([a-z]\.)\s+\*\*/g, '**$1** ');
+
+  // 4. Ensure clear spacing between consecutive questions
+  s = s.replace(/([^\n])\s+(### Soal\s+\d+)/gi, '$1\n\n$2');
+
+  return s.trim();
+}
+
+// Helper function to thoroughly sanitize math syntax for Word (.docx) & PDF export
+export function cleanMathAndTypography(raw: string): string {
+  if (!raw) return '';
+  let s = formatReadableAnswers(raw);
 
   // 1. Remove leaked chain-of-thought / monologue / self-doubt
   s = s.replace(/\b(?:Mari hitung ulang|Tunggu\.|Periksa kembali opsi)[^.\n]*[.\n]/gi, '');
 
-  // 2. LaTeX commands & wrappers
+  // 2. Format 2D matrices for Word/PDF: \begin{pmatrix} a & b \\ c & d \end{pmatrix} -> [ a   b ]\n[ c   d ]
+  s = s.replace(/\\begin\{[bp]matrix\}([\s\S]*?)\\end\{[bp]matrix\}/g, (_m, inner) => {
+    const rows = inner.trim().split('\\\\').map((r: string) => {
+      const cols = r.split('&').map((c: string) => c.trim()).join('   ');
+      return `[  ${cols}  ]`;
+    });
+    return '\n' + rows.join('\n') + '\n';
+  });
+
+  // 3. LaTeX commands & wrappers
   s = s.replace(/\\(?:text|mathrm|mathbf)\{([^}]+)\}/g, '$1');
   s = s.replace(/\\left\s*([(\[{])/g, '$1');
   s = s.replace(/\\right\s*([)\]}])/g, '$1');
+  s = s.replace(/\\(?:implies|Rightarrow)\b/g, ' ⇒ ');
+  s = s.replace(/\\(?:rightarrow|to)\b/g, ' → ');
+  s = s.replace(/\\int_\{([^{}]+)\}\^\{([^{}]+)\}/g, '∫[$1 to $2] ');
+  s = s.replace(/\\int_([0-9a-zA-Z])\^([0-9a-zA-Z])/g, '∫[$1 to $2] ');
+  s = s.replace(/\\int\b/g, '∫ ');
 
-  // 3. Operators & symbols
+  // 4. Operators & symbols
   s = s.replace(/\\cdot/g, ' · ');
   s = s.replace(/\\times/g, ' × ');
   s = s.replace(/\\div/g, ' ÷ ');
@@ -110,7 +150,7 @@ export function cleanMathAndTypography(raw: string): string {
   s = s.replace(/\\neq/g, ' ≠ ');
   s = s.replace(/\\infty/g, ' ∞ ');
 
-  // 4. Greek letters
+  // 5. Greek letters
   s = s.replace(/\\theta/g, 'θ').replace(/\\Theta/g, 'Θ');
   s = s.replace(/\\omega/g, 'ω').replace(/\\Omega/g, 'Ω');
   s = s.replace(/\\alpha/g, 'α').replace(/\\beta/g, 'β');
@@ -119,7 +159,7 @@ export function cleanMathAndTypography(raw: string): string {
   s = s.replace(/\\mu/g, 'μ').replace(/\\sigma/g, 'σ').replace(/\\rho/g, 'ρ');
   s = s.replace(/\\partial/g, '∂');
 
-  // 5. Fractions
+  // 6. Fractions
   s = s.replace(/\\frac\{1\}\{2\}/g, '½');
   s = s.replace(/\\frac\{1\}\{4\}/g, '¼');
   s = s.replace(/\\frac\{3\}\{4\}/g, '¾');
@@ -134,7 +174,7 @@ export function cleanMathAndTypography(raw: string): string {
     });
   }
 
-  // 6. Square roots
+  // 7. Square roots
   while (/\\sqrt\{([^{}]+)\}/.test(s)) {
     s = s.replace(/\\sqrt\{([^{}]+)\}/g, (_m, inner) => {
       const cleanInner = inner.trim();
@@ -145,7 +185,7 @@ export function cleanMathAndTypography(raw: string): string {
     });
   }
 
-  // 7. Superscripts and Degrees
+  // 8. Superscripts and Degrees
   s = s.replace(/\^\s*\\circ/g, '°');
   s = s.replace(/\^\{\s*\\circ\s*\}/g, '°');
   s = s.replace(/\^\{\s*([0-9+\-n]+)\s*\}/g, (_m, p) => {
@@ -157,7 +197,7 @@ export function cleanMathAndTypography(raw: string): string {
     return map[c] || `^${c}`;
   });
 
-  // 8. Subscripts
+  // 9. Subscripts
   s = s.replace(/_\{([a-zA-Z0-9]+)\}/g, (_m, p) => {
     const subMap: Record<string, string> = { '0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉' };
     if (/^[0-9]+$/.test(p)) return p.split('').map((c: string) => subMap[c] || c).join('');
@@ -168,22 +208,22 @@ export function cleanMathAndTypography(raw: string): string {
     return subMap[c] || `_${c}`;
   });
 
-  // 9. Standard math functions
+  // 10. Standard math functions
   s = s.replace(/\\(sin|cos|tan|cot|sec|csc|ln|log|exp|lim)\b/g, '$1');
 
-  // 10. Outer $ delimiters
+  // 11. Outer $ delimiters
   s = s.replace(/\$\$([^$]+)\$\$/g, '$1');
   s = s.replace(/\$([^$\n]+)\$/g, '$1');
   s = s.replace(/\$/g, '');
 
-  // 11. Normalize spaces & fraction spacing
+  // 12. Normalize spaces & fraction spacing
   s = s.replace(/([½¼¾])([a-zA-Z])/g, '$1 $2');
   s = s.replace(/[ \t]+/g, ' ');
   s = s.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
   s = s.replace(/\s*·\s*/g, ' · ');
   s = s.replace(/\s*=\s*/g, ' = ');
 
-  // 12. Collapse multiple blank lines
+  // 13. Collapse multiple blank lines
   s = s.replace(/\n{3,}/g, '\n\n');
 
   return s.trim();

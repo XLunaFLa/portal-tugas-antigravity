@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { solveWithDualEngine, cleanMathAndTypography, ImagePart } from '@/lib/gemini';
+import { solveWithDualEngine, formatReadableAnswers, ImagePart } from '@/lib/gemini';
 import { uploadImageBuffer, saveRecord } from '@/lib/supabase';
 
 export const maxDuration = 60; // Allow sufficient time for multimodal reasoning
@@ -66,8 +66,8 @@ export async function POST(req: NextRequest) {
       model
     );
 
-    // Thoroughly clean formulas and eliminate monologue slop
-    const answer = cleanMathAndTypography(rawAnswer);
+    // Format structure cleanly into separate lines/bullets if model squashed them
+    const answer = formatReadableAnswers(rawAnswer);
 
     // Collect uploaded image URLs
     const uploadedUrls: string[] = [];
