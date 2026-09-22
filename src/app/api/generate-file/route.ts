@@ -1,7 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cleanMathAndTypography } from '@/lib/gemini';
+import katex from 'katex';
+import { mml2omml } from 'mathml2omml';
 
 export const maxDuration = 30;
+
+function latexToOmmlComponent(latex: string, ImportedXmlComponent: any): any | null {
+  try {
+    const cleanTex = latex.trim();
+    if (!cleanTex) return null;
+    const html = katex.renderToString(cleanTex, { output: 'mathml', throwOnError: false });
+    const match = html.match(/<math[\s\S]*?<\/math>/);
+    if (!match) return null;
+    const omml = mml2omml(match[0]);
+    if (!omml || !omml.includes('<m:oMath')) return null;
+    return ImportedXmlComponent.fromXmlString(omml);
+  } catch {
+    return null;
+  }
+}
 
 // ─── Markdown Parser & Sanitizer ─────────────────────────────
 type BlockType = 'h1' | 'h2' | 'h3' | 'question' | 'answer' | 'review' | 'reference' | 'formula' | 'paragraph' | 'bullet' | 'numbered' | 'table' | 'empty';
@@ -212,183 +229,185 @@ function parseMarkdown(rawContent: string): Block[] {
   return blocks;
 }
 
-// ─── Word Generator (DOCX) ───────────────────────────────────
-async function buildDocx(content: string): Promise<Buffer> {
-  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import('docx');
-  const blocks = parseMarkdown(content);
-  const children: InstanceType<typeof Paragraph>[] = [];
+function parseLineToDocxRuns(
+  rawText: string,
+  docxLib: any,
+  baseSize = 24,
+  baseFont = 'Calibri',
+  baseColor = '0f172a'
+): any[] {
+  const { TextRun, ImportedXmlComponent } = docxLib;
+  const runs: any[] = [];
+  const mathParts = rawText.split(/(\$[^$\n]+?\$)/g);
 
-  const toRuns = (rawText: string, baseSize = 24, baseFont = 'Calibri', baseColor = '0f172a'): InstanceType<typeof TextRun>[] => {
-    const runs = parseInlineRuns(rawText);
-    return runs.map(r => new TextRun({
-      text: r.text,
-      bold: r.bold,
-      italics: r.italics,
-      size: baseSize,
-      font: baseFont,
-      color: baseColor,
-    }));
-  };
-
-  for (const block of blocks) {
-    switch (block.type) {
-      case 'h1':
-        children.push(new Paragraph({
-          heading: HeadingLevel.HEADING_1,
-          children: [new TextRun({ text: block.content, bold: true, size: 28, font: 'Calibri', color: '0f2944' })],
-          spacing: { before: 360, after: 140 },
-        }));
-        break;
-
-      case 'h2':
-        children.push(new Paragraph({
-          heading: HeadingLevel.HEADING_2,
-          children: [new TextRun({ text: block.content, bold: true, size: 25, font: 'Calibri', color: '1e293b' })],
-          spacing: { before: 260, after: 100 },
-        }));
-        break;
-
-      case 'h3':
-        children.push(new Paragraph({
-          heading: HeadingLevel.HEADING_3,
-          children: [new TextRun({ text: block.content, bold: true, size: 24, font: 'Calibri', color: '334155' })],
-          spacing: { before: 200, after: 80 },
-        }));
-        break;
-
-      case 'question':
-        children.push(new Paragraph({
-          children: [new TextRun({ text: block.content, bold: true, size: 26, font: 'Calibri', color: '0f2944' })],
-          spacing: { before: 240, after: 60 },
-        }));
-        break;
-
-      case 'answer': {
-        const colonIdx = block.content.indexOf(':');
-        let runs: InstanceType<typeof TextRun>[] = [];
-        if (colonIdx !== -1) {
-          const prefix = block.content.slice(0, colonIdx + 1);
-          const rest = block.content.slice(colonIdx + 1);
-          runs = [
-            new TextRun({ text: prefix, bold: true, size: 24, font: 'Calibri', color: '1e3a8a' }),
-            new TextRun({ text: rest, bold: true, size: 24, font: 'Calibri', color: '0f172a' }),
-          ];
-        } else {
-          runs = [new TextRun({ text: block.content, bold: true, size: 24, font: 'Calibri', color: '1e3a8a' })];
-        }
-        children.push(new Paragraph({
-          children: runs,
-          spacing: { before: 60, after: 60 },
-        }));
-        break;
+  for (const part of mathParts) {
+    if (part.startsWith('$') && part.endsWith('$')) {
+      const tex = part.slice(1, -1).trim();
+      const ommlComp = latexToOmmlComponent(tex, ImportedXmlComponent);
+      if (ommlComp) {
+        runs.push(ommlComp);
+      } else {
+        const clean = cleanMathAndTypography(tex);
+        runs.push(new TextRun({ text: clean, italics: true, size: baseSize, font: baseFont, color: baseColor }));
       }
-
-      case 'review': {
-        const colonIdx = block.content.indexOf(':');
-        let runs: InstanceType<typeof TextRun>[] = [];
-        if (colonIdx !== -1) {
-          const prefix = block.content.slice(0, colonIdx + 1);
-          const rest = block.content.slice(colonIdx + 1);
-          runs = [
-            new TextRun({ text: prefix + ' ', bold: true, size: 24, font: 'Calibri', color: '0f172a' }),
-            ...toRuns(rest.trimStart(), 24, 'Calibri', '1e293b'),
-          ];
-        } else {
-          runs = toRuns(block.content, 24, 'Calibri', '1e293b');
-        }
-        children.push(new Paragraph({
-          children: runs,
-          spacing: { before: 60, after: 60, line: 340 },
-          alignment: AlignmentType.JUSTIFIED,
+    } else if (part) {
+      const inlineRuns = parseInlineRuns(part);
+      for (const ir of inlineRuns) {
+        runs.push(new TextRun({
+          text: ir.text,
+          bold: ir.bold,
+          italics: ir.italics,
+          size: baseSize,
+          font: baseFont,
+          color: baseColor,
         }));
-        break;
       }
-
-      case 'reference': {
-        children.push(new Paragraph({
-          children: [new TextRun({ text: block.content, italics: true, size: 21, font: 'Calibri', color: '475569' })],
-          spacing: { before: 40, after: 180 },
-        }));
-        break;
-      }
-
-      case 'formula': {
-        children.push(new Paragraph({
-          children: [new TextRun({ text: block.content, bold: true, size: 23, font: 'Calibri', color: '0f172a' })],
-          indent: { left: 720 },
-          spacing: { before: 40, after: 40, line: 280 },
-        }));
-        break;
-      }
-
-      case 'paragraph':
-        children.push(new Paragraph({
-          children: toRuns(block.content, 24, 'Calibri', '0f172a'),
-          spacing: { before: 80, after: 80, line: 360 },
-          alignment: AlignmentType.JUSTIFIED,
-        }));
-        break;
-
-      case 'bullet':
-        children.push(new Paragraph({
-          bullet: { level: 0 },
-          children: toRuns(block.content, 24, 'Calibri', '0f172a'),
-          spacing: { before: 50, after: 50, line: 320 },
-        }));
-        break;
-
-      case 'numbered':
-        children.push(new Paragraph({
-          numbering: { reference: 'num-list', level: 0 },
-          children: toRuns(block.content, 24, 'Calibri', '0f172a'),
-          spacing: { before: 50, after: 50, line: 320 },
-        }));
-        break;
-
-      case 'table':
-        if (block.rows) {
-          for (const [ri, row] of block.rows.entries()) {
-            children.push(new Paragraph({
-              children: [new TextRun({
-                text: row.join('  |  '),
-                size: 22,
-                bold: ri === 0,
-                font: 'Calibri',
-                color: '0f172a',
-              })],
-              spacing: { before: 40, after: 40 },
-            }));
-          }
-        }
-        break;
     }
   }
 
+  return runs.length > 0 ? runs : [new TextRun({ text: '', size: baseSize, font: baseFont })];
+}
+
+// ─── Word Generator (DOCX with Native Office Math OMML) ───────
+async function buildDocx(content: string): Promise<Buffer> {
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, ImportedXmlComponent } = await import('docx');
+  const docxLib = { TextRun, ImportedXmlComponent };
+  const lines = content.split('\n');
+  const children: InstanceType<typeof Paragraph>[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i].trim();
+    if (!line) continue;
+
+    // Divider (---, ***, ___)
+    if (/^[-*_]{3,}$/.test(line)) continue;
+
+    // Block math $$...$$
+    if (line.startsWith('$$') && line.endsWith('$$') && line.length > 4) {
+      const tex = line.slice(2, -2).trim();
+      const omml = latexToOmmlComponent(tex, ImportedXmlComponent);
+      if (omml) {
+        children.push(new Paragraph({
+          children: [omml],
+          indent: { left: 720 },
+          spacing: { before: 80, after: 80 }
+        }));
+      } else {
+        const clean = cleanMathAndTypography(tex);
+        children.push(new Paragraph({
+          children: [new TextRun({ text: clean, bold: true, size: 24, font: 'Calibri', color: '0f172a' })],
+          indent: { left: 720 },
+          spacing: { before: 80, after: 80 }
+        }));
+      }
+      continue;
+    }
+
+    // Headings (#, ##, ###)
+    if (/^#{1,3}\s+/.test(line)) {
+      const headingText = line.replace(/^#{1,3}\s+/, '').replace(/[\*#]/g, '');
+      children.push(new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        children: [new TextRun({ text: headingText, bold: true, size: 28, font: 'Calibri', color: '0f2944' })],
+        spacing: { before: 320, after: 120 }
+      }));
+      continue;
+    }
+
+    // Question labels: Soal 1, Nomor 1, etc.
+    if (/^(Soal\s+\d+|Nomor\s+\d+|Kasus\s+\d+)/i.test(line)) {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: line.replace(/[\*#]/g, ''), bold: true, size: 26, font: 'Calibri', color: '0f2944' })],
+        spacing: { before: 260, after: 80 }
+      }));
+      continue;
+    }
+
+    // Answer lines: Jawaban: B. ...
+    if (/^(Jawaban\s*:|Kunci\s*:)/i.test(line)) {
+      const colonIdx = line.indexOf(':');
+      const prefix = line.slice(0, colonIdx + 1);
+      const rest = line.slice(colonIdx + 1);
+      children.push(new Paragraph({
+        children: [
+          new TextRun({ text: prefix, bold: true, size: 24, font: 'Calibri', color: '1e3a8a' }),
+          ...parseLineToDocxRuns(rest, docxLib, 24, 'Calibri', '0f172a')
+        ],
+        spacing: { before: 60, after: 60 }
+      }));
+      continue;
+    }
+
+    // Review / Discussion lines
+    if (/^(Ulasan\s*:|Pembahasan\s*:|Penjelasan\s*:)/i.test(line)) {
+      const colonIdx = line.indexOf(':');
+      const prefix = line.slice(0, colonIdx + 1);
+      const rest = line.slice(colonIdx + 1);
+      children.push(new Paragraph({
+        children: [
+          new TextRun({ text: prefix + ' ', bold: true, size: 24, font: 'Calibri', color: '0f172a' }),
+          ...parseLineToDocxRuns(rest.trimStart(), docxLib, 24, 'Calibri', '1e293b')
+        ],
+        spacing: { before: 60, after: 60, line: 340 },
+        alignment: AlignmentType.JUSTIFIED
+      }));
+      continue;
+    }
+
+    // Reference lines
+    if (/^(Referensi\s*:|Daftar\s+Referensi|Daftar\s+Pustaka)/i.test(line)) {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: line.replace(/[\*#]/g, ''), italics: true, size: 21, font: 'Calibri', color: '475569' })],
+        spacing: { before: 40, after: 180 }
+      }));
+      continue;
+    }
+
+    // Bullets (- item, * item, • item)
+    const isBullet = /^[-*•]\s+/.test(line);
+    if (isBullet) {
+      line = line.replace(/^[-*•]\s+/, '');
+    }
+
+    // Sub-items (a. item or b) item)
+    const sm = line.match(/^([a-zA-Z])[\.\)]\s+(.+)/);
+    if (sm) {
+      const runs = parseLineToDocxRuns(`**${sm[1]}.** ${sm[2]}`, docxLib, 24, 'Calibri', '1e293b');
+      children.push(new Paragraph({
+        children: runs,
+        bullet: { level: 0 },
+        indent: { left: 400 },
+        spacing: { before: 60, after: 60, line: 320 }
+      }));
+      continue;
+    }
+
+    // Standard paragraph or bullet line
+    const runs = parseLineToDocxRuns(line, docxLib, 24, 'Calibri', isBullet ? '1e293b' : '0f172a');
+    children.push(new Paragraph({
+      children: runs,
+      bullet: isBullet ? { level: 0 } : undefined,
+      indent: isBullet ? { left: 400 } : undefined,
+      spacing: { before: 70, after: 70, line: 340 },
+      alignment: isBullet ? undefined : AlignmentType.JUSTIFIED
+    }));
+  }
+
   const doc = new Document({
-    numbering: {
-      config: [{
-        reference: 'num-list',
-        levels: [{
-          level: 0,
-          format: 'decimal' as any,
-          text: '%1.',
-          alignment: AlignmentType.LEFT,
-          style: { paragraph: { indent: { left: 720, hanging: 360 } } }
-        }]
-      }]
-    },
     sections: [{
       properties: {
         page: {
-          margin: { top: 1440, right: 1440, bottom: 1440, left: 1800 }
+          margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }
         }
       },
-      children,
-    }],
+      children
+    }]
   });
 
-  return Packer.toBuffer(doc);
+  return await Packer.toBuffer(doc);
 }
+
+
 
 // ─── Excel Generator (XLSX) ──────────────────────────────────
 async function buildXlsx(content: string): Promise<Buffer> {
