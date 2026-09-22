@@ -1,4 +1,4 @@
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+// Portal Tugas — hanya menggunakan 9Router Antigravity (tidak ada Google API langsung)
 const NINE_ROUTER_BASE_URL = process.env.NINE_ROUTER_BASE_URL || 'http://127.0.0.1:20129/v1';
 const NINE_ROUTER_API_KEY = process.env.NINE_ROUTER_API_KEY || 'sk-87aec067d631e9b8-5e1at0-4185ba89';
 
@@ -272,12 +272,12 @@ export async function ask9Router(
     });
   }
 
-  // High-efficiency, fast fallback inside 9Router (capped at 2 fast attempts to stay well within Vercel timeout)
+  // Fallback model: jika primary gagal, coba model yang lebih kuat
   const primaryModel = (images.length > 0 && model.includes('claude'))
     ? 'ag/gemini-3.8-flash-high'
     : model;
   const secondaryModel = primaryModel === 'ag/gemini-3.8-flash-high' 
-    ? 'ag/gemini-3.7-flash-high' 
+    ? 'ag/gemini-3.5-flash-high' 
     : 'ag/gemini-3.8-flash-high';
   const uniqueModels = Array.from(new Set([primaryModel, secondaryModel]));
 
@@ -298,7 +298,9 @@ export async function ask9Router(
       };
 
       const controller = new AbortController();
-      const timeoutMs = idx === 0 ? 22000 : 12000;
+      // Timeout lebih lama untuk dokumen panjang (40 soal dll)
+      // Vercel maxDuration = 60s, jadi beri 50s untuk primary, 30s untuk secondary
+      const timeoutMs = idx === 0 ? 50000 : 30000;
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       const response = await fetch(`${NINE_ROUTER_BASE_URL}/chat/completions`, {
@@ -357,140 +359,20 @@ export async function ask9Router(
   throw new Error(`Semua model 9Router gagal. Error terakhir: ${lastError?.message || 'Unknown error'}`);
 }
 
-// 2. Solver via Google Gemini Cloud Direct (Official Google API)
-export async function askGemini(
-  promptText: string, 
-  images: ImagePart[] = [], 
-  preferredModel = 'gemini-2.0-flash'
-): Promise<string> {
-  if (!GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY belum dikonfigurasi.');
-  }
-
-  // Model list: urutan dari tercepat ke paling powerful
-  // Gunakan nama model Google resmi sebagai anchor fallback terakhir
-  const modelsToTry = [
-    preferredModel,
-    'gemini-3.5-flash',
-    'gemini-3.8-flash',
-    'gemini-3-flash-preview',
-    'gemini-2.5-flash-preview-05-20', // Google stable
-    'gemini-2.0-flash',               // Google stable — selalu tersedia
-    'gemini-1.5-flash',               // Google stable — terakhir resort
-  ];
-  const uniqueModels = Array.from(new Set(modelsToTry));
-
-  let lastError: any = null;
-
-  for (const model of uniqueModels) {
-    // Coba setiap model hingga 2x (1 retry untuk 503)
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-        const parts: any[] = [];
-
-        const fullText = promptText && promptText.trim().length > 0 
-          ? `${SYSTEM_PROMPT}\n\nPertanyaan/Tugas Mahasiswa:\n${promptText}`
-          : `${SYSTEM_PROMPT}\n\nSilakan baca soal pada gambar di bawah ini, lalu berikan jawaban yang tepat dan penjelasan singkat beserta referensinya:`;
-
-        parts.push({ text: fullText });
-
-        for (const img of images) {
-          parts.push({
-            inlineData: {
-              mimeType: img.mimeType,
-              data: img.data,
-            },
-          });
-        }
-
-        const payload = {
-          contents: [{ parts }],
-          generationConfig: {
-            temperature: 0.2,
-            topP: 0.95,
-            maxOutputTokens: 8192,
-          },
-        };
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const errorBody = await response.text();
-          const statusCode = response.status;
-
-          // 503 = server overload: retry setelah 1.5 detik, lalu skip ke model berikutnya
-          if (statusCode === 503 && attempt === 0) {
-            await new Promise(r => setTimeout(r, 1500));
-            continue; // retry attempt ke-2
-          }
-
-          // 429 = rate limit: langsung skip ke model berikutnya
-          // 400 = invalid argument (format gambar salah): skip
-          // Lainnya: skip
-          throw new Error(`Model ${model} returned ${statusCode}: ${errorBody}`);
-        }
-
-        const result = await response.json();
-        const candidate = result.candidates?.[0];
-        const answer = candidate?.content?.parts?.[0]?.text;
-
-        if (!answer) {
-          throw new Error(`Empty response from model ${model}`);
-        }
-
-        return answer;
-      } catch (err: any) {
-        lastError = err;
-        if (attempt === 0 && err.message?.includes('503')) {
-          // Akan diretry di loop berikutnya
-          continue;
-        }
-        break; // Error non-503: skip ke model berikutnya
-      }
-    }
-  }
-
-  throw new Error(`All Gemini models failed: ${lastError?.message || 'Unknown error'}`);
-}
-
-// 3. Smart Dual-Engine Orchestrator with Auto-Fallback
+// Orchestrator — hanya 9Router, tidak ada Google API
 export async function solveWithDualEngine(
   promptText: string,
   images: ImagePart[] = [],
-  engineChoice = 'auto', // 'auto' | '9router' | 'gemini'
+  engineChoice = 'auto', // 'auto' | '9router' | 'gemini' (semua pakai 9Router)
   modelChoice = 'ag/gemini-3.8-flash-high'
 ): Promise<{ answer: string; usedEngine: string }> {
-  // If user chose 9Router or Auto:
-  if (engineChoice === '9router' || engineChoice === 'auto') {
-    // For large multi-question documents (> 2000 chars), tunnel roundtrip + multi-question generation
-    // risks hitting Vercel's 60s function limit. Fast-path directly to Gemini 3.5 Flash for sub-25s response!
-    const isVeryLongPrompt = promptText.length > 2000;
-    if (engineChoice === 'auto' && isVeryLongPrompt) {
-      const answer = await askGemini(promptText, images, 'gemini-3.5-flash');
-      return { answer, usedEngine: 'Google Gemini 3.5 Flash (Cloud Turbo Direct)' };
-    }
+  // Jika ada gambar dan model Claude dipilih → ganti ke Gemini (Claude tidak support vision)
+  const effectiveModel = (images.length > 0 && modelChoice.includes('claude'))
+    ? 'ag/gemini-3.8-flash-high'
+    : modelChoice;
 
-    try {
-      const effectiveModel = (images.length > 0 && modelChoice.includes('claude'))
-        ? 'ag/gemini-3.8-flash-high'
-        : modelChoice;
-      const answer = await ask9Router(promptText, images, effectiveModel);
-      const cleanModelName = effectiveModel.replace('ag/', '').toUpperCase();
-      return { answer, usedEngine: `9Router [${cleanModelName}] (10 Akun Antigravity)` };
-    } catch (err: any) {
-      console.warn('9Router failed or unreachable, falling back to Google Cloud Direct...', err.message);
-      if (engineChoice === '9router') {
-        throw new Error(`9Router tidak dapat dihubungi (${err.message}). Pastikan 9Router atau Tunnel di PC aktif.`);
-      }
-    }
-  }
-
-  // Fallback to Google Gemini Cloud Direct
-  const answer = await askGemini(promptText, images, 'gemini-3.5-flash');
-  return { answer, usedEngine: 'Google Gemini 3.5 Flash (Cloud Direct)' };
+  const answer = await ask9Router(promptText, images, effectiveModel);
+  const cleanModelName = effectiveModel.replace('ag/', '').toUpperCase();
+  return { answer, usedEngine: `9Router [${cleanModelName}] (Antigravity)` };
 }
+
