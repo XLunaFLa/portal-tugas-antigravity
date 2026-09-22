@@ -361,73 +361,97 @@ export async function ask9Router(
 export async function askGemini(
   promptText: string, 
   images: ImagePart[] = [], 
-  preferredModel = 'gemini-3.5-flash'
+  preferredModel = 'gemini-2.0-flash'
 ): Promise<string> {
   if (!GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY belum dikonfigurasi.');
   }
 
+  // Model list: urutan dari tercepat ke paling powerful
+  // Gunakan nama model Google resmi sebagai anchor fallback terakhir
   const modelsToTry = [
-    'gemini-3-flash-preview',
-    preferredModel, 
+    preferredModel,
     'gemini-3.5-flash',
-    'gemini-3.8-flash'
+    'gemini-3.8-flash',
+    'gemini-3-flash-preview',
+    'gemini-2.5-flash-preview-05-20', // Google stable
+    'gemini-2.0-flash',               // Google stable — selalu tersedia
+    'gemini-1.5-flash',               // Google stable — terakhir resort
   ];
   const uniqueModels = Array.from(new Set(modelsToTry));
 
   let lastError: any = null;
 
   for (const model of uniqueModels) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-      const parts: any[] = [];
+    // Coba setiap model hingga 2x (1 retry untuk 503)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+        const parts: any[] = [];
 
-      const fullText = promptText && promptText.trim().length > 0 
-        ? `${SYSTEM_PROMPT}\n\nPertanyaan/Tugas Mahasiswa:\n${promptText}`
-        : `${SYSTEM_PROMPT}\n\nSilakan baca soal pada gambar di bawah ini, lalu berikan jawaban yang tepat dan penjelasan singkat beserta referensinya:`;
+        const fullText = promptText && promptText.trim().length > 0 
+          ? `${SYSTEM_PROMPT}\n\nPertanyaan/Tugas Mahasiswa:\n${promptText}`
+          : `${SYSTEM_PROMPT}\n\nSilakan baca soal pada gambar di bawah ini, lalu berikan jawaban yang tepat dan penjelasan singkat beserta referensinya:`;
 
-      parts.push({ text: fullText });
+        parts.push({ text: fullText });
 
-      for (const img of images) {
-        parts.push({
-          inlineData: {
-            mimeType: img.mimeType,
-            data: img.data,
+        for (const img of images) {
+          parts.push({
+            inlineData: {
+              mimeType: img.mimeType,
+              data: img.data,
+            },
+          });
+        }
+
+        const payload = {
+          contents: [{ parts }],
+          generationConfig: {
+            temperature: 0.2,
+            topP: 0.95,
+            maxOutputTokens: 8192,
           },
+        };
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
         });
+
+        if (!response.ok) {
+          const errorBody = await response.text();
+          const statusCode = response.status;
+
+          // 503 = server overload: retry setelah 1.5 detik, lalu skip ke model berikutnya
+          if (statusCode === 503 && attempt === 0) {
+            await new Promise(r => setTimeout(r, 1500));
+            continue; // retry attempt ke-2
+          }
+
+          // 429 = rate limit: langsung skip ke model berikutnya
+          // 400 = invalid argument (format gambar salah): skip
+          // Lainnya: skip
+          throw new Error(`Model ${model} returned ${statusCode}: ${errorBody}`);
+        }
+
+        const result = await response.json();
+        const candidate = result.candidates?.[0];
+        const answer = candidate?.content?.parts?.[0]?.text;
+
+        if (!answer) {
+          throw new Error(`Empty response from model ${model}`);
+        }
+
+        return answer;
+      } catch (err: any) {
+        lastError = err;
+        if (attempt === 0 && err.message?.includes('503')) {
+          // Akan diretry di loop berikutnya
+          continue;
+        }
+        break; // Error non-503: skip ke model berikutnya
       }
-
-      const payload = {
-        contents: [{ parts }],
-        generationConfig: {
-          temperature: 0.2,
-          topP: 0.95,
-          maxOutputTokens: 8192,
-        },
-      };
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`Model ${model} returned ${response.status}: ${errorBody}`);
-      }
-
-      const result = await response.json();
-      const candidate = result.candidates?.[0];
-      const answer = candidate?.content?.parts?.[0]?.text;
-
-      if (!answer) {
-        throw new Error(`Empty response from model ${model}`);
-      }
-
-      return answer;
-    } catch (err: any) {
-      lastError = err;
     }
   }
 
