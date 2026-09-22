@@ -28,7 +28,9 @@ export async function POST(req: NextRequest) {
 
     if (Array.isArray(images) && images.length > 0) {
       for (const img of images) {
-        const cleanBase64 = img.base64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+        const rawBase64 = (img.base64 || img.data || '') as string;
+        if (!rawBase64) continue;
+        const cleanBase64 = rawBase64.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '');
         const mimeType = img.mimeType || 'image/png';
 
         imageParts.push({
