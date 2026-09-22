@@ -124,6 +124,9 @@ export async function ask9Router(
         temperature: 0.2,
       };
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 18000);
+
       const response = await fetch(`${NINE_ROUTER_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -131,7 +134,9 @@ export async function ask9Router(
           'Authorization': `Bearer ${NINE_ROUTER_API_KEY}`,
         },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorBody = await response.text();
@@ -242,6 +247,14 @@ export async function solveWithDualEngine(
 ): Promise<{ answer: string; usedEngine: string }> {
   // If user chose 9Router or Auto:
   if (engineChoice === '9router' || engineChoice === 'auto') {
+    // For large multi-question documents (> 2000 chars), tunnel roundtrip + multi-question generation
+    // risks hitting Vercel's 60s function limit. Fast-path directly to Gemini 3.5 Flash for sub-25s response!
+    const isVeryLongPrompt = promptText.length > 2000;
+    if (engineChoice === 'auto' && isVeryLongPrompt) {
+      const answer = await askGemini(promptText, images, 'gemini-3.5-flash');
+      return { answer, usedEngine: 'Google Gemini 3.5 Flash (Cloud Turbo Direct)' };
+    }
+
     try {
       const effectiveModel = (images.length > 0 && modelChoice.includes('claude'))
         ? 'ag/gemini-3.8-flash-high'

@@ -256,9 +256,16 @@ export default function Home() {
               }),
             });
 
-            const data = await res.json();
+            const responseText = await res.text();
+            let data: any;
+            try {
+              data = JSON.parse(responseText);
+            } catch {
+              throw new Error(`Gagal membaca berkas (HTTP ${res.status}). Format berkas mungkin tidak sesuai.`);
+            }
+
             if (!res.ok) {
-              throw new Error(data.error || 'Gagal membaca dokumen.');
+              throw new Error(data?.error || 'Gagal membaca dokumen.');
             }
 
             setDocuments((prev) =>
@@ -370,10 +377,19 @@ export default function Home() {
         }),
       });
 
-      const data = await res.json();
+      const responseText = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        if (res.status === 504 || responseText.includes('FUNCTION_INVOCATION_TIMEOUT') || responseText.includes('An error occurred')) {
+          throw new Error('Batas waktu pengerjaan terlampaui karena berkas memuat banyak soal analitis. Sistem telah dioptimalkan, silakan klik "Kerjakan Tugas" sekali lagi.');
+        }
+        throw new Error(`Server error (${res.status}): Terjadi kendala saat memproses jawaban.`);
+      }
 
       if (!res.ok) {
-        throw new Error(data.error || 'Gagal memproses soal.');
+        throw new Error(data?.error || 'Gagal memproses soal.');
       }
 
       setAnswer(data.answer);
