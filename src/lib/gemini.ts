@@ -1,0 +1,101 @@
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+
+export interface ImagePart {
+  mimeType: string;
+  data: string; // base64 string without data:image/...;base64,
+}
+
+export const SYSTEM_PROMPT = `
+Kamu adalah "Antigravity Academic Assistant", asisten kecerdasan buatan cerdas yang khusus mendampingi mahasiswa (khususnya mahasiswa perguruan tinggi dan Universitas Terbuka/UT) dalam menyelesaikan tugas perkuliahan, kuis online, dan forum diskusi akademik.
+
+Pedoman Menjawab Kuis Pilihan Ganda (Berdasarkan Gambar / Tangkapan Layar):
+1. Berikan OPSI JAWABAN YANG TEPAT secara tegas dan jelas di baris paling awal dengan format tebal (Contoh: "Jawaban yang tepat adalah: **Segmentasi pasar**").
+2. Jika ada beberapa gambar/soal sekaligus, buatkan pemisah yang rapi untuk tiap nomor soal (Contoh: "### Soal 1", "### Soal 2").
+3. Berikan "Penjelasan Singkat" dengan poin-poin yang mudah dipahami, berbobot, dan mengulas mengapa opsi tersebut tepat serta bila perlu mengulas mengapa opsi pengecoh lainnya salah.
+4. Akhiri selalu dengan "Referensi:" yang menyertakan sumber baku (misalnya Modul BMP Universitas Terbuka terkait seperti EKMA4216, EKMA4153, EKMA4312, atau buku teks standar seperti Kotler & Keller, Kieso, Robbins & Judge, dll.) tanpa deskripsi bertele-tele di bawah daftar referensi.
+
+Pedoman Menjawab Soal Diskusi / Esai:
+1. Jawab secara analitis, mendalam, namun terstruktur rapi menggunakan gaya mahasiswa teladan (bukan gaya robotik AI).
+2. Gunakan sub-judul, penomoran, atau poin-poin agar dosen atau tutor mudah membaca dan memberi nilai maksimal.
+3. Sertakan referensi teoretis atau modul di bagian bawah.
+4. Jaga agar bahasa tetap baku, akademis, dan sopan dalam bahasa Indonesia yang baik dan benar.
+`;
+
+export async function askGemini(promptText: string, images: ImagePart[] = [], preferredModel = 'gemini-3.6-flash'): Promise<string> {
+  if (!GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY is not configured.');
+  }
+
+  // Model cascade: try preferred model first, then fallback
+  const modelsToTry = [preferredModel, 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-latest'];
+  const uniqueModels = Array.from(new Set(modelsToTry));
+
+  let lastError: any = null;
+
+  for (const model of uniqueModels) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+
+      const parts: any[] = [];
+
+      // Add system prompt and user text
+      const fullText = promptText && promptText.trim().length > 0 
+        ? `${SYSTEM_PROMPT}\n\nPertanyaan/Tugas Mahasiswa:\n${promptText}`
+        : `${SYSTEM_PROMPT}\n\nSilakan baca soal pada gambar di bawah ini, lalu berikan jawaban yang tepat dan penjelasan singkat beserta referensinya:`;
+
+      parts.push({ text: fullText });
+
+      // Add image parts if any
+      for (const img of images) {
+        parts.push({
+          inlineData: {
+            mimeType: img.mimeType,
+            data: img.data,
+          },
+        });
+      }
+
+      const payload = {
+        contents: [
+          {
+            parts,
+          },
+        ],
+        generationConfig: {
+          temperature: 0.2,
+          topP: 0.95,
+          maxOutputTokens: 3000,
+        },
+      };
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`Model ${model} returned ${response.status}: ${errorBody}`);
+      }
+
+      const result = await response.json();
+      const candidate = result.candidates?.[0];
+      const answer = candidate?.content?.parts?.[0]?.text;
+
+      if (!answer) {
+        throw new Error(`Empty response from model ${model}`);
+      }
+
+      return answer;
+    } catch (err: any) {
+      console.warn(`Attempt with model ${model} failed:`, err.message);
+      lastError = err;
+      // continue to next model fallback
+    }
+  }
+
+  throw new Error(`All models failed. Last error: ${lastError?.message || 'Unknown error'}`);
+}
