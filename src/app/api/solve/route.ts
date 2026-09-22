@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       documents = [],
       type = 'kuis', 
       engine = 'auto', 
-      model = 'ag/gemini-3.8-flash-high' 
+      model = 'ag/gemini-3.8-flash-medium' 
     } = body;
 
     let combinedPrompt = prompt_text;

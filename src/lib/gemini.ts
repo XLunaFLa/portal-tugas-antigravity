@@ -260,7 +260,7 @@ export function cleanMathAndTypography(raw: string): string {
 export async function ask9Router(
   promptText: string, 
   images: ImagePart[] = [], 
-  model = 'ag/gemini-3.8-flash-high'
+  model = 'ag/gemini-3.8-flash-medium'
 ): Promise<string> {
   const contentParts: any[] = [];
 
@@ -280,13 +280,15 @@ export async function ask9Router(
     });
   }
 
-  // Fallback model di dalam 9Router
+  // Fallback model di dalam 9Router: jika model awal lama, gunakan flash-medium / flash
   const primaryModel = (images.length > 0 && model.includes('claude'))
-    ? 'ag/gemini-3.8-flash-high'
-    : model;
-  const secondaryModel = primaryModel === 'ag/gemini-3.8-flash-high' 
-    ? 'ag/gemini-3.7-flash-high' 
-    : 'ag/gemini-3.8-flash-high';
+    ? 'ag/gemini-3.8-flash-medium'
+    : (model === 'ag/gemini-3.8-flash-high' && promptText.length > 1500)
+      ? 'ag/gemini-3.8-flash-medium' // Dokumen panjang: gunakan medium agar selesai < 40s (aman dari limit Vercel)
+      : model;
+  const secondaryModel = primaryModel === 'ag/gemini-3.8-flash-medium' 
+    ? 'ag/gemini-3.8-flash' 
+    : 'ag/gemini-3.8-flash-medium';
   const uniqueModels = Array.from(new Set([primaryModel, secondaryModel]));
 
   let lastError: any = null;
@@ -405,11 +407,11 @@ export async function solveWithDualEngine(
   promptText: string,
   images: ImagePart[] = [],
   engineChoice = 'auto', // 'auto' | '9router' | 'gemini' (semua pakai 9Router)
-  modelChoice = 'ag/gemini-3.8-flash-high'
+  modelChoice = 'ag/gemini-3.8-flash-medium'
 ): Promise<{ answer: string; usedEngine: string }> {
   // Jika ada gambar dan model Claude dipilih → ganti ke Gemini (Claude tidak support vision)
   const effectiveModel = (images.length > 0 && modelChoice.includes('claude'))
-    ? 'ag/gemini-3.8-flash-high'
+    ? 'ag/gemini-3.8-flash-medium'
     : modelChoice;
 
   const answer = await ask9Router(promptText, images, effectiveModel);

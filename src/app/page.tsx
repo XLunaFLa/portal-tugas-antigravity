@@ -82,7 +82,7 @@ export default function Home() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [engineChoice, setEngineChoice] = useState<'auto' | '9router' | 'gemini'>('auto');
-  const [selectedModel, setSelectedModel] = useState('ag/gemini-3.8-flash-high');
+  const [selectedModel, setSelectedModel] = useState('ag/gemini-3.8-flash-medium');
   const [documents, setDocuments] = useState<AttachedDocument[]>([]);
   const [submittedPrompt, setSubmittedPrompt] = useState<{
     text: string;
@@ -553,7 +553,8 @@ export default function Home() {
               className="text-xs max-w-[210px] lg:max-w-none bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 dark:focus:border-slate-500 cursor-pointer font-medium truncate"
               title="Model Penalaran"
             >
-              <option value="ag/gemini-3.8-flash-high">Gemini 3.8 Flash HIGH (Vision)</option>
+              <option value="ag/gemini-3.8-flash-medium">Gemini 3.8 Flash (Cepat & Pintar - Rekomendasi)</option>
+              <option value="ag/gemini-3.8-flash-high">Gemini 3.8 Flash HIGH (Deep Thinking)</option>
               <option value="ag/claude-sonnet-4-6">Claude Sonnet 4.6 (Esai & Skripsi)</option>
               <option value="ag/gemini-3.7-flash-high">Gemini 3.7 Flash HIGH</option>
               <option value="ag/claude-opus-4-6-thinking">Claude Opus 4.6 Thinking</option>
@@ -618,7 +619,8 @@ export default function Home() {
             onChange={(e: any) => setSelectedModel(e.target.value)}
             className="text-[11px] bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none truncate font-medium"
           >
-            <option value="ag/gemini-3.8-flash-high">Gemini 3.8 (Vision)</option>
+            <option value="ag/gemini-3.8-flash-medium">Gemini 3.8 (Cepat & Pintar)</option>
+            <option value="ag/gemini-3.8-flash-high">Gemini 3.8 (Deep Thinking)</option>
             <option value="ag/claude-sonnet-4-6">Claude 4.6 (Esai)</option>
             <option value="ag/gemini-3.7-flash-high">Gemini 3.7</option>
             <option value="ag/claude-opus-4-6-thinking">Claude Opus</option>
