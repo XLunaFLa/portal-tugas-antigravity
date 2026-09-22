@@ -91,7 +91,8 @@ export default function Home() {
   const [customFilename, setCustomFilename] = useState('');
   const [fileDownloading, setFileDownloading] = useState(false);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const desktopInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -343,7 +344,9 @@ export default function Home() {
     setPromptText('');
     setImages([]);
     setDocuments([]);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (desktopInputRef.current) desktopInputRef.current.value = '';
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
     if (docInputRef.current) docInputRef.current.value = '';
 
     try {
@@ -576,7 +579,7 @@ export default function Home() {
             <div className="flex flex-col gap-3">
               {/* Dropzone — Desktop: full drag-drop area for ANY file format */}
               <div
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => desktopInputRef.current?.click()}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   e.preventDefault();
@@ -585,14 +588,14 @@ export default function Home() {
                 className="hidden sm:flex border border-dashed border-slate-700/80 hover:border-slate-500 bg-slate-950/40 hover:bg-slate-950/70 transition-all duration-200 rounded-xl p-7 flex-col items-center justify-center gap-2 cursor-pointer text-center group"
               >
                 <input
-                  ref={fileInputRef}
+                  ref={desktopInputRef}
                   type="file"
                   multiple
                   accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,.csv,.md,image/*"
                   className="hidden"
                   onChange={(e) => {
                     if (e.target.files) handleFileUpload(e.target.files);
-                    if (fileInputRef.current) fileInputRef.current.value = '';
+                    if (desktopInputRef.current) desktopInputRef.current.value = '';
                   }}
                 />
                 <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300 flex items-center justify-center group-hover:scale-105 transition">
@@ -622,21 +625,21 @@ export default function Home() {
                   }}
                 />
                 <input
-                  ref={fileInputRef}
+                  ref={galleryInputRef}
                   type="file"
                   multiple
                   accept="image/*"
                   className="hidden"
                   onChange={(e) => {
                     if (e.target.files) handleFileUpload(e.target.files);
-                    if (fileInputRef.current) fileInputRef.current.value = '';
+                    if (galleryInputRef.current) galleryInputRef.current.value = '';
                   }}
                 />
                 <input
                   ref={docInputRef}
                   type="file"
                   multiple
-                  accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,.csv,.md,*/*"
+                  accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint,text/plain,text/csv,application/*,text/*,.pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,.csv"
                   className="hidden"
                   onChange={(e) => {
                     if (e.target.files) handleFileUpload(e.target.files);
@@ -656,7 +659,7 @@ export default function Home() {
 
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => galleryInputRef.current?.click()}
                     className="flex flex-col items-center justify-center gap-1.5 border border-slate-800 bg-slate-900/90 active:bg-slate-800 transition rounded-xl py-3.5 px-1 cursor-pointer text-center"
                   >
                     <ImageIcon className="w-4 h-4 text-slate-300" />
