@@ -23,6 +23,8 @@ import {
   File as FileIcon,
   Sun,
   Moon,
+  FastForward,
+  Sparkles,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import ReactMarkdown from 'react-markdown';
@@ -79,6 +81,7 @@ export default function Home() {
   const [answer, setAnswer] = useState<string | null>(null);
   const [usedEngine, setUsedEngine] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [continuing, setContinuing] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [engineChoice, setEngineChoice] = useState<'auto' | '9router' | 'gemini'>('auto');
@@ -450,6 +453,73 @@ export default function Home() {
       alert(`Error: ${err.message || 'Gagal mendapatkan jawaban'}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleContinueSolve = async () => {
+    if (!answer || loading || continuing) return;
+
+    // Temukan nomor soal terakhir yang sudah terjawab di naskah saat ini
+    const matches = Array.from(answer.matchAll(/Soal\s+(\d+)/gi));
+    let lastNum = 0;
+    if (matches.length > 0) {
+      const nums = matches.map((m) => parseInt(m[1], 10)).filter((n) => !isNaN(n));
+      if (nums.length > 0) {
+        lastNum = Math.max(...nums);
+      }
+    }
+    const nextStartNum = lastNum > 0 ? lastNum + 1 : 1;
+
+    setContinuing(true);
+    setLoadingStatus(`Melanjutkan pengerjaan mulai Soal ${nextStartNum}...`);
+
+    try {
+      const continuationPrompt = `LANJUTKAN PENGERJAAN SOAL BERIKUTNYA!\n`
+        + `Soal nomor 1 sampai ${lastNum} telah selesai dikerjakan sebelumnya.\n`
+        + `Mulai kerjakan langsung dari NOMOR ${nextStartNum} sampai butir soal paling akhir secara lengkap dan tuntas!\n`
+        + `Gunakan format: ### Soal ${nextStartNum}, dst.\n`
+        + (submittedPrompt?.text ? `\nInstruksi awal pengguna: ${submittedPrompt.text}` : '');
+
+      const res = await fetch('/api/solve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt_text: continuationPrompt,
+          images: (submittedPrompt?.images || []).map((img: any) => ({
+            data: img.base64 || img.data,
+            mimeType: img.mimeType,
+          })),
+          documents: (submittedPrompt?.documents || []).map((doc: any) => ({
+            fileName: doc.fileName,
+            text: doc.text,
+            wordCount: doc.wordCount,
+          })),
+          type: activeTab,
+          engine: engineChoice,
+          model: selectedModel,
+        }),
+      });
+
+      const responseText = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error('Gagal melanjutkan pengerjaan. Silakan coba lagi.');
+      }
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Gagal melanjutkan pengerjaan.');
+      }
+
+      setAnswer((prev) => (prev ? `${prev}\n\n---\n\n${data.answer}` : data.answer));
+      confetti({ particleCount: 40, spread: 50, origin: { y: 0.8 } });
+      fetchHistory();
+    } catch (err: any) {
+      alert(`Gagal melanjutkan: ${err.message}`);
+    } finally {
+      setContinuing(false);
+      setLoadingStatus('');
     }
   };
 
@@ -962,6 +1032,17 @@ export default function Home() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={handleContinueSolve}
+                  disabled={continuing || loading}
+                  className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white border border-blue-600 shadow-sm transition cursor-pointer disabled:opacity-50"
+                  title="Lanjutkan pengerjaan nomor soal berikutnya"
+                >
+                  {continuing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FastForward className="w-3.5 h-3.5" />}
+                  <span>{continuing ? 'Melanjutkan...' : 'Lanjutkan Soal'}</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleCopy}
                   className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                     copied
@@ -1084,7 +1165,7 @@ export default function Home() {
             )}
 
             {/* Answer Content — Clean Academic Typography */}
-            <div className="text-slate-900 dark:text-slate-200 text-sm sm:text-base leading-relaxed font-sans selection:bg-blue-600 selection:text-white dark:selection:bg-slate-700 dark:selection:text-white space-y-3 pt-2">
+            <div className="text-slate-900 dark:text-slate-200 text-sm sm:text-base leading-relaxed font-sans selection:bg-blue-600 selection:text-white dark:selection:bg-slate-700 dark:selection:text-white space-y-3 pt-2 break-words overflow-x-auto">
               <ReactMarkdown
                 remarkPlugins={[remarkMath]}
                 rehypePlugins={[rehypeKatex]}
@@ -1137,6 +1218,32 @@ export default function Home() {
               >
                 {answer}
               </ReactMarkdown>
+            </div>
+
+            {/* Bottom Continuation Callout Bar */}
+            <div className="mt-4 p-3.5 sm:p-4 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 shrink-0">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    Ingin melanjutkan pengerjaan soal berikutnya?
+                  </p>
+                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                    Klik tombol untuk melanjutkan nomor soal yang tersisa secara otomatis.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleContinueSolve}
+                disabled={continuing || loading}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm cursor-pointer shrink-0 disabled:opacity-50"
+              >
+                {continuing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FastForward className="w-3.5 h-3.5" />}
+                <span>{continuing ? 'Sedang Melanjutkan...' : 'Lanjutkan Soal Berikutnya'}</span>
+              </button>
             </div>
 
             {/* Footer Status */}

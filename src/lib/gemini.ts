@@ -1,5 +1,9 @@
 // Portal Tugas — hanya menggunakan 9Router Antigravity (tidak ada Google API langsung)
-const NINE_ROUTER_BASE_URL = process.env.NINE_ROUTER_BASE_URL || 'https://freelance-officers-differences-really.trycloudflare.com/v1';
+const TUNNEL_URL = 'https://pest-forwarding-personalized-much.trycloudflare.com/v1';
+const LOCAL_URL = 'http://127.0.0.1:20129/v1';
+
+const NINE_ROUTER_BASE_URL = process.env.NINE_ROUTER_BASE_URL 
+  || (process.env.VERCEL ? TUNNEL_URL : LOCAL_URL);
 const NINE_ROUTER_API_KEY = process.env.NINE_ROUTER_API_KEY || 'sk-87aec067d631e9b8-zhlati-3571faa8';
 
 export interface ImagePart {
@@ -70,11 +74,13 @@ AI murahan selalu membagi segala hal menjadi tepat 3 poin dengan panjang seragam
 AUTO-DETEKSI JENIS SOAL:
 
 [JIKA SOAL PILIHAN GANDA / A-B-C-D]
-- Tulis nomor soal bersih: Soal 1, Soal 2.
-- Baris pertama: tulis tegas opsi dan isinya (Contoh: Jawaban: B. Diferensiasi Produk).
-- Ulasan singkat (2–3 kalimat): jelaskan dasar logis jawaban tersebut dan kelemahan opsi pengecoh terdekat.
-- Referensi: 1 baris modul/buku baku.
-- Jangan bertele-tele pada soal pilihan ganda.
+- Tulis nomor soal: ### Soal 1, ### Soal 2.
+- Baris pertama: tulis tegas opsi dan isinya (Contoh: **Jawaban: B. Diferensiasi Produk**).
+- JIKA PENGGUNA MEMINTA HANYA KUNCI / HANYA ABCD / ATAU SOAL BERJUMLAH BANYAK (10–40 SOAL):
+  * DILARANG membuat ulasan panjang, penurunan rumus bertele-tele, atau referensi! Cukup nomor soal dan opsi jawaban (atau maksimal 1 baris rumus jika hitungan).
+  * Ini WAJIB dipatuhi agar seluruh butir soal tuntas terjawab lengkap dari awal sampai akhir!
+- JIKA SOAL HANYA 1–5 NOMOR DAN TIDAK ADA PERMINTAAN HANYA ABCD:
+  * Berikan ulasan singkat (1–2 kalimat) dan referensi modul.
 
 [JIKA SOAL DISKUSI / KASUS / ESAI AKADEMIK / HITUNGAN]
 - Struktur: Pembuka berbasis argumen/konsep langsung -> Penurunan matematis atau pembahasan analitis berbobot -> Sintesis kritis/Kesimpulan -> Daftar Referensi.
@@ -101,27 +107,73 @@ AUTO-DETEKSI JENIS SOAL:
 - Jika soal menunjuk gambar tertentu (misal: "lihat gambar di bawah", "[Gambar/Diagram Terlampir]"), obligasi jawab berdasarkan konten visual tersebut.
 
 10. EFISIENSI & KETUNTASAN PAKET SOAL BANYAK (TRY OUT / 10–40 SOAL):
-- Jika dokumen berisi lebih dari 5 butir soal (misal: Try Out 40 soal), WAJIB gunakan format RINGKAS & TEPAT SASARAN pada SETIAP nomor agar seluruh 40 nomor selesai terjawab tuntas:
-  ### Soal [Nomor]
-  **Jawaban: [Pilihan Huruf] [Isi Jawaban Ringkas]**
-  * **Perhitungan / Pembuktian:** [Tuliskan 1–3 baris rumus dan langkah hitungan pokok secara bersih]
-- DILARANG menulis pengantar panjang atau esai bertele-tele pada tiap butir soal pilihan ganda.
-- WAJIB TUNTAS: Kerjakan dari Soal 1 sampai nomor soal terakhir tanpa terputus!
+- Jika dokumen berisi banyak soal (misal: Try Out 40 soal), jaga agar pembahasan tiap nomor sangat padat (maksimal 1-2 baris rumus inti) agar seluruh 40 butir soal tuntas terjawab lengkap dari awal sampai akhir!
+- DILARANG memotong jawaban di tengah jalan. Selesaikan sampai butir soal terakhir.
+
+11. KEPATUHAN PENUH PADA PERMINTAAN USER ("HANYA ABCD" / "KUNCI JAWABAN SAJA"):
+- Jika mahasiswa/user memberi instruksi seperti "hanya ABCD", "jawab ABCD-nya saja", "kunci jawaban saja", atau sejenisnya:
+  * WAJIB PATUH MUTLAK: Tuliskan HANYA nomor soal dan pilihan opsinya secara langsung:
+    ### Soal 1
+    **Jawaban: C. 5 1/2**
+
+    ### Soal 2
+    **Jawaban: B. 121**
+  * JANGAN sertakan baris perhitungan/pembuktian yang panjang jika pengguna secara jelas meminta "hanya ABCD annya saja"!
+  * Ini membuat pengerjaan 40 soal selesai secepat kilat dalam hitungan detik tanpa risiko terputus!
 `;
+
+// Helper to repair unclosed LaTeX/Markdown tags if text was truncated
+export function repairIncompleteMarkdown(raw: string): string {
+  if (!raw) return '';
+  let s = raw.trim();
+
+  // 1. Repair unclosed $$ block math
+  const blockMatches = s.match(/\$\$/g);
+  if (blockMatches && blockMatches.length % 2 !== 0) {
+    s += '\n$$';
+  }
+
+  // 2. Repair unclosed $ inline math (excluding escaped \$ and $$ blocks)
+  const withoutBlock = s.replace(/\$\$[\s\S]*?\$\$/g, '');
+  const inlineMatches = withoutBlock.replace(/\\(\$)/g, '').match(/\$/g);
+  if (inlineMatches && inlineMatches.length % 2 !== 0) {
+    s += '$';
+  }
+
+  // 3. Repair unclosed bold **
+  const boldMatches = s.match(/\*\*/g);
+  if (boldMatches && boldMatches.length % 2 !== 0) {
+    s += '**';
+  }
+
+  // 4. Repair unclosed code blocks ```
+  const codeBlockMatches = s.match(/```/g);
+  if (codeBlockMatches && codeBlockMatches.length % 2 !== 0) {
+    s += '\n```\n';
+  }
+
+  return s;
+}
 
 // Helper to format answers cleanly into lines/bullets if squashed
 export function formatReadableAnswers(raw: string): string {
   if (!raw) return '';
-  let s = raw;
+  let s = repairIncompleteMarkdown(raw);
 
-  // 1. Pastikan setiap nomor soal (### Soal X) diawali dengan baris baru ganda agar ReactMarkdown merendernya sebagai judul
+  // 1. Hapus baris heading kosong "###" yang tidak punya judul
+  s = s.replace(/^###\s*$/gm, '');
+
+  // 2. Jika ada pola "Soal 1: Jawaban" tanpa heading markdown "###", ubah menjadi "### Soal 1\n**Jawaban: "
+  s = s.replace(/(?:^|\n)(?<!###\s*)(?:\*\*)?Soal\s+(\d+)[:\s]+(?:\*\*)?(?:JAWABAN|Jawaban)[:\s]*/gi, '\n\n### Soal $1\n**Jawaban: ');
+
+  // 3. Pastikan setiap nomor soal (### Soal X) diawali dengan baris baru ganda agar ReactMarkdown merendernya sebagai judul
   s = s.replace(/([^\n])\s*(###\s*Soal\s+\d+)/gi, '$1\n\n$2');
-  s = s.replace(/([^\n])\s*(?:\*\*)?(Soal\s+\d+)[:\s]+(?:\*\*)?(?:JAWABAN|Jawaban)/gi, '$1\n\n### $2\n**Jawaban');
 
-  // 2. Pastikan "**Jawaban:" selalu berada di baris baru setelah judul soal
+  // 4. Pastikan "**Jawaban:" selalu berada di baris baru setelah judul soal
   s = s.replace(/([^\n])\s*(\*\*Jawaban[:\s])/gi, '$1\n$2');
 
-  // 3. Rapikan spasi baris berlebih
+  // 5. Bersihkan lagi baris kosong berlebih atau heading kosong
+  s = s.replace(/^###\s*$/gm, '');
   s = s.replace(/\n{3,}/g, '\n\n');
 
   return s.trim();
@@ -258,9 +310,17 @@ export async function ask9Router(
   model = 'ag/gemini-3.8-flash-medium'
 ): Promise<string> {
   const contentParts: any[] = [];
+  const isVercel = Boolean(process.env.VERCEL);
+  const isAbcdOnly = /(?:hanya\s+abcd|jawab\s+abcd|abcd\s+saja|kunci\s+jawaban|hanya\s+opsi|opsi\s+saja|pilihan\s+saja|tanpa\s+cara|tanpa\s+pembahasan)/i.test(promptText);
 
-  const fullText = promptText && promptText.trim().length > 0 
-    ? `${SYSTEM_PROMPT}\n\nPertanyaan/Tugas Mahasiswa:\n${promptText}`
+  let userText = promptText;
+  if (isAbcdOnly) {
+    const abcdHeader = `\n\n[PERINTAH UTAMA — KUNCI JAWABAN SAJA]:\nPengguna meminta HANYA kunci jawaban/pilihan ABCD. DILARANG KERAS menuliskan pembahasan, uraian panjang, rumus, maupun referensi modul. Tuliskan HANYA nomor soal dan pilihan opsi secara langsung: \n### Soal 1\n**Jawaban: C. 5 1/2**\n\n### Soal 2\n**Jawaban: B. 121**\n\nWAJIB TUNTASKAN SELURUH NOMOR DARI 1 SAMPAI NOMOR TERAKHIR TANPA TERPUTUS!\n`;
+    userText = `${abcdHeader}\n${promptText}\n\n${abcdHeader}`;
+  }
+
+  const fullText = userText && userText.trim().length > 0 
+    ? `${SYSTEM_PROMPT}\n\nPertanyaan/Tugas Mahasiswa:\n${userText}`
     : `${SYSTEM_PROMPT}\n\nSilakan baca soal pada gambar di bawah ini, lalu berikan jawaban yang tepat dan penjelasan singkat beserta referensinya:`;
 
   contentParts.push({ type: 'text', text: fullText });
@@ -275,15 +335,15 @@ export async function ask9Router(
     });
   }
 
-  // Fallback model di dalam 9Router: jika model awal lama, gunakan flash-medium / flash
+  // Model selection: gunakan gemini-3.8-flash untuk soal banyak / ABCD only agar selesai < 20s
   const primaryModel = (images.length > 0 && model.includes('claude'))
-    ? 'ag/gemini-3.8-flash-medium'
-    : (model === 'ag/gemini-3.8-flash-high' && promptText.length > 1500)
-      ? 'ag/gemini-3.8-flash-medium' // Dokumen panjang: gunakan medium agar selesai < 40s (aman dari limit Vercel)
+    ? 'ag/gemini-3.8-flash'
+    : (isAbcdOnly || promptText.length > 2000 || images.length > 3)
+      ? 'ag/gemini-3.8-flash'
       : model;
-  const secondaryModel = primaryModel === 'ag/gemini-3.8-flash-medium' 
-    ? 'ag/gemini-3.8-flash' 
-    : 'ag/gemini-3.8-flash-medium';
+  const secondaryModel = primaryModel === 'ag/gemini-3.8-flash' 
+    ? 'ag/gemini-3.8-flash-medium' 
+    : 'ag/gemini-3.8-flash';
   const uniqueModels = Array.from(new Set([primaryModel, secondaryModel]));
 
   let lastError: any = null;
@@ -291,12 +351,14 @@ export async function ask9Router(
 
   for (const [idx, targetModel] of uniqueModels.entries()) {
     const elapsed = Date.now() - startTime;
-    const remainingBudget = 58000 - elapsed; // Vercel maxDuration = 60s
+    const remainingBudget = isVercel ? (58000 - elapsed) : (600000 - elapsed);
     if (idx > 0 && remainingBudget < 15000) {
       break;
     }
-    // Beri 9Router waktu maksimal 57.5 detik sebelum batas 60 detik Vercel tercapai
-    const timeoutMs = Math.max(10000, Math.min(remainingBudget - 1000, 57500));
+    // Lokal: 10 menit (bebas batas waktu). Vercel: maksimal 56.5s (aman sebelum limit 60s)
+    const timeoutMs = isVercel
+      ? Math.max(10000, Math.min(remainingBudget - 1000, 56500))
+      : 600000;
 
     try {
       const payload = {
@@ -374,11 +436,14 @@ export async function ask9Router(
             }
           }
         } catch (streamErr: any) {
-          // Jika timeout abort terjadi di tengah stream, gunakan apa yang sudah terkumpul
+          // Jika timeout abort terjadi di tengah stream, gunakan apa yang sudah terkumpul dengan perbaikan tag
           if (fullAnswer.length > 200) {
             console.warn(`[9Router] Streaming interrupted at ${fullAnswer.length} chars, returning partial answer`);
             clearTimeout(timeoutId);
-            return fullAnswer;
+            const repaired = repairIncompleteMarkdown(fullAnswer);
+            return isVercel
+              ? repaired + '\n\n---\n> ⏱️ **Pemberitahuan Sistem:** Batas waktu eksekusi serverless (60 detik Vercel) tercapai pada nomor ini. Anda dapat klik tombol **"Lanjutkan Soal Berikutnya"** di bawah atau gunakan **localhost:3000** untuk pengerjaan dokumen besar tanpa batas waktu.'
+              : repaired;
           }
           throw streamErr;
         }
