@@ -69,37 +69,42 @@ export async function POST(req: NextRequest) {
     // Format structure cleanly into separate lines/bullets if model squashed them
     const answer = formatReadableAnswers(rawAnswer);
 
-    // Collect uploaded image URLs
+    // Save task record & upload images to Supabase without blocking response if time is tight
     const uploadedUrls: string[] = [];
-    try {
-      const results = await Promise.allSettled(imageUploadPromises);
-      for (const r of results) {
-        if (r.status === 'fulfilled' && r.value) {
-          uploadedUrls.push(r.value);
-        }
-      }
-    } catch {
-      // ignore
-    }
-
-    // Save task record to Supabase
     let savedData = null;
     try {
-      const firstDocName = Array.isArray(documents) && documents.length > 0 ? documents[0]?.fileName : null;
-      const previewTitle = prompt_text 
-        ? (prompt_text.slice(0, 45) + (prompt_text.length > 45 ? '...' : '')) 
-        : firstDocName
-          ? `File: ${firstDocName.slice(0, 40)}`
-          : `Kuis Gambar (${imageParts.length} Soal)`;
+      const dbWork = (async () => {
+        try {
+          const results = await Promise.allSettled(imageUploadPromises);
+          for (const r of results) {
+            if (r.status === 'fulfilled' && r.value) {
+              uploadedUrls.push(r.value);
+            }
+          }
+        } catch {
+          // ignore
+        }
 
-      savedData = await saveRecord({
-        type: type === 'diskusi' ? 'diskusi' : 'kuis',
-        title: previewTitle,
-        prompt_text: combinedPrompt,
-        image_urls: uploadedUrls,
-        answer_text: answer,
-        course_category: usedEngine,
-      });
+        const firstDocName = Array.isArray(documents) && documents.length > 0 ? documents[0]?.fileName : null;
+        const previewTitle = prompt_text 
+          ? (prompt_text.slice(0, 45) + (prompt_text.length > 45 ? '...' : '')) 
+          : firstDocName
+            ? `File: ${firstDocName.slice(0, 40)}`
+            : `Kuis Gambar (${imageParts.length} Soal)`;
+
+        return await saveRecord({
+          type: type === 'diskusi' ? 'diskusi' : 'kuis',
+          title: previewTitle,
+          prompt_text: combinedPrompt,
+          image_urls: uploadedUrls,
+          answer_text: answer,
+          course_category: usedEngine,
+        });
+      })();
+
+      // Beri batas waktu 1.5 detik untuk DB/Storage agar tidak melebihi batas 60 detik Vercel
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
+      savedData = await Promise.race([dbWork, timeoutPromise]);
     } catch (e) {
       console.warn('Error saving to DB:', e);
     }

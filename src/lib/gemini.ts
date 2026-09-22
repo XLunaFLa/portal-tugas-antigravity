@@ -249,7 +249,7 @@ export function cleanMathAndTypography(raw: string): string {
   return s.trim();
 }
 
-// 1. Solver via 9Router (Default: ag/gemini-3.8-flash-high for vision or ag/claude-sonnet-4-6 for text)
+// 1. Solver via 9Router (streaming mode — data mengalir token per token, tidak tunggu semua selesai)
 export async function ask9Router(
   promptText: string, 
   images: ImagePart[] = [], 
@@ -263,6 +263,7 @@ export async function ask9Router(
 
   contentParts.push({ type: 'text', text: fullText });
 
+  // SEMUA GAMBAR DIKIRIM TANPA BATASAN APAPUN (sesuai instruksi user)
   for (const img of images) {
     contentParts.push({
       type: 'image_url',
@@ -272,35 +273,37 @@ export async function ask9Router(
     });
   }
 
-  // Fallback model: jika primary gagal, coba model yang lebih kuat
+  // Fallback model di dalam 9Router
   const primaryModel = (images.length > 0 && model.includes('claude'))
     ? 'ag/gemini-3.8-flash-high'
     : model;
   const secondaryModel = primaryModel === 'ag/gemini-3.8-flash-high' 
-    ? 'ag/gemini-3.5-flash-high' 
+    ? 'ag/gemini-3.7-flash-high' 
     : 'ag/gemini-3.8-flash-high';
   const uniqueModels = Array.from(new Set([primaryModel, secondaryModel]));
 
   let lastError: any = null;
+  const startTime = Date.now();
 
   for (const [idx, targetModel] of uniqueModels.entries()) {
+    const elapsed = Date.now() - startTime;
+    const remainingBudget = 55000 - elapsed; // Vercel limit = 60s
+    if (idx > 0 && remainingBudget < 15000) {
+      // Jika sisa waktu Vercel kurang dari 15s, jangan mulai attempt baru
+      break;
+    }
+    const timeoutMs = Math.max(10000, Math.min(remainingBudget - 2000, 52000));
+
     try {
       const payload = {
         model: targetModel,
-        messages: [
-          {
-            role: 'user',
-            content: contentParts,
-          },
-        ],
-        stream: false,
+        messages: [{ role: 'user', content: contentParts }],
+        stream: true,       // STREAMING: token langsung mengalir
         temperature: 0.2,
+        max_tokens: 8192,
       };
 
       const controller = new AbortController();
-      // Timeout lebih lama untuk dokumen panjang (40 soal dll)
-      // Vercel maxDuration = 60s, jadi beri 50s untuk primary, 30s untuk secondary
-      const timeoutMs = idx === 0 ? 50000 : 30000;
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       const response = await fetch(`${NINE_ROUTER_BASE_URL}/chat/completions`, {
@@ -312,44 +315,71 @@ export async function ask9Router(
         body: JSON.stringify(payload),
         signal: controller.signal,
       });
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
+        clearTimeout(timeoutId);
         const errorBody = await response.text();
         throw new Error(`9Router [${targetModel}] error ${response.status}: ${errorBody}`);
       }
 
-      const rawText = await response.text();
-      let answer = '';
-
-      if (rawText.includes('data: ')) {
-        const lines = rawText.split('\n');
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('data: ') && !trimmed.includes('[DONE]')) {
-            try {
-              const parsed = JSON.parse(trimmed.slice(6));
-              const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || '';
-              answer += delta;
-            } catch {
-              // ignore malformed line
+      // Baca stream SSE token per token
+      let fullAnswer = '';
+      
+      if (response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed.startsWith('data: ')) continue;
+              if (trimmed.includes('[DONE]')) break;
+              
+              try {
+                const parsed = JSON.parse(trimmed.slice(6));
+                const delta = parsed.choices?.[0]?.delta?.content 
+                           || parsed.choices?.[0]?.message?.content 
+                           || '';
+                fullAnswer += delta;
+              } catch {
+                // abaikan baris SSE yang rusak
+              }
             }
           }
+        } catch (streamErr: any) {
+          // Jika timeout abort terjadi di tengah stream, gunakan apa yang sudah terkumpul
+          if (fullAnswer.length > 200) {
+            console.warn(`[9Router] Streaming interrupted at ${fullAnswer.length} chars (likely timeout), using partial answer`);
+            clearTimeout(timeoutId);
+            return fullAnswer;
+          }
+          throw streamErr;
         }
       } else {
+        // Fallback: respons non-streaming (OpenAI format biasa)
+        const rawText = await response.text();
         try {
           const result = JSON.parse(rawText);
-          answer = result.choices?.[0]?.message?.content || '';
+          fullAnswer = result.choices?.[0]?.message?.content || '';
         } catch {
-          // ignore
+          fullAnswer = rawText;
         }
       }
 
-      if (!answer) {
+      clearTimeout(timeoutId);
+
+      if (!fullAnswer) {
         throw new Error(`9Router [${targetModel}] mengembalikan respons kosong.`);
       }
 
-      return answer;
+      return fullAnswer;
     } catch (err: any) {
       console.warn(`9Router model ${targetModel} attempt failed:`, err.message);
       lastError = err;
@@ -358,6 +388,7 @@ export async function ask9Router(
 
   throw new Error(`Semua model 9Router gagal. Error terakhir: ${lastError?.message || 'Unknown error'}`);
 }
+
 
 // Orchestrator — hanya 9Router, tidak ada Google API
 export async function solveWithDualEngine(
