@@ -116,9 +116,18 @@ async function parseDocxOpenXml(buffer: Buffer): Promise<{ text: string; images:
     const fullPath = target.startsWith('word/') ? target : `word/${target}`;
     const file = zip.file(fullPath);
     if (file) {
+      const ext = (target.split('.').pop()?.toLowerCase() || '').replace('jpeg', 'jpg');
+
+      // Gemini Vision hanya mendukung: png, jpeg, webp, gif
+      // Skip wmf, emf, bmp, tiff, svg — format ini tidak dapat diproses Gemini (error 400)
+      const supportedExts = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+      if (!supportedExts.includes(ext)) continue;
+
       const imgBuffer = await file.async('nodebuffer');
-      const ext = target.split('.').pop()?.toLowerCase() || 'png';
-      const mime = (ext === 'jpeg' || ext === 'jpg') ? 'image/jpeg' : 'image/png';
+      const mime = (ext === 'jpeg' || ext === 'jpg') ? 'image/jpeg'
+        : ext === 'webp' ? 'image/webp'
+        : ext === 'gif' ? 'image/gif'
+        : 'image/png';
       const b64 = imgBuffer.toString('base64');
       const fileName = target.split('/').pop() || 'diagram.png';
       const item: ParsedDocumentImage = {
