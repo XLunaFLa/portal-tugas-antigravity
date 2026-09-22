@@ -100,12 +100,13 @@ AUTO-DETEKSI JENIS SOAL:
 - Gunakan data dari gambar sebagai dasar kalkulasi. Jangan asumsikan nilai tanpa melihat gambar terlebih dahulu.
 - Jika soal menunjuk gambar tertentu (misal: "lihat gambar di bawah", "[Gambar/Diagram Terlampir]"), obligasi jawab berdasarkan konten visual tersebut.
 
-10. EFISIENSI & KEPADATAN PEMBAHASAN UNTUK PAKET SOAL BANYAK (10–40 SOAL):
-- Untuk dokumen yang berisi banyak soal (misal: 10 sampai 40 butir soal), tuliskan pembahasan secara PADAT, TEPAT SASARAN, dan LUGAS:
-  * Nomor: ### Soal X
-  * Baris 1: **Jawaban: [Pilihan Opsi & Isinya]** (Contoh: **Jawaban: B. 470 cm²**)
-  * Langkah Inti / Kalkulasi: Tuliskan rumus dan langkah kalkulasi matematis pokok (2–4 baris ringkas, bersih, tanpa pengantar basa-basi).
-- Dilarang membuat esai panjang bertele-tele pada tiap butir soal pilihan ganda agar seluruh 40 nomor tuntas terjawab lengkap dengan cepat.
+10. EFISIENSI & KETUNTASAN PAKET SOAL BANYAK (TRY OUT / 10–40 SOAL):
+- Jika dokumen berisi lebih dari 5 butir soal (misal: Try Out 40 soal), WAJIB gunakan format RINGKAS & TEPAT SASARAN pada SETIAP nomor agar seluruh 40 nomor selesai terjawab tuntas:
+  ### Soal [Nomor]
+  **Jawaban: [Pilihan Huruf] [Isi Jawaban Ringkas]**
+  * **Perhitungan / Pembuktian:** [Tuliskan 1–3 baris rumus dan langkah hitungan pokok secara bersih]
+- DILARANG menulis pengantar panjang atau esai bertele-tele pada tiap butir soal pilihan ganda.
+- WAJIB TUNTAS: Kerjakan dari Soal 1 sampai nomor soal terakhir tanpa terputus!
 `;
 
 // Helper to format answers cleanly into lines/bullets if squashed
@@ -113,21 +114,15 @@ export function formatReadableAnswers(raw: string): string {
   if (!raw) return '';
   let s = raw;
 
-  // 1. Separate "Soal X JAWABAN = a. ..." onto clean lines with markdown heading and bold label
-  s = s.replace(/(Soal\s+\d+)\s*(JAWABAN\s*=?:?)\s*(?:([a-zA-Z]\.)\s+)?/gi, (_match, soal, ans, sub) => {
-    let out = `### ${soal}\n**${ans}**\n`;
-    if (sub) out += `* **${sub}** `;
-    return out;
-  });
+  // 1. Pastikan setiap nomor soal (### Soal X) diawali dengan baris baru ganda agar ReactMarkdown merendernya sebagai judul
+  s = s.replace(/([^\n])\s*(###\s*Soal\s+\d+)/gi, '$1\n\n$2');
+  s = s.replace(/([^\n])\s*(?:\*\*)?(Soal\s+\d+)[:\s]+(?:\*\*)?(?:JAWABAN|Jawaban)/gi, '$1\n\n### $2\n**Jawaban');
 
-  // 2. Separate inline squashed sub-items: " ... b. ... c. ..." into bullet lines
-  s = s.replace(/([^\n])\s+([b-z]\.\s+)/g, '$1\n* **$2**');
+  // 2. Pastikan "**Jawaban:" selalu berada di baris baru setelah judul soal
+  s = s.replace(/([^\n])\s*(\*\*Jawaban[:\s])/gi, '$1\n$2');
 
-  // 3. Clean spacing inside bold tags e.g. **b. ** -> **b.** 
-  s = s.replace(/\*\*([a-z]\.)\s+\*\*/g, '**$1** ');
-
-  // 4. Ensure clear spacing between consecutive questions
-  s = s.replace(/([^\n])\s+(### Soal\s+\d+)/gi, '$1\n\n$2');
+  // 3. Rapikan spasi baris berlebih
+  s = s.replace(/\n{3,}/g, '\n\n');
 
   return s.trim();
 }
@@ -331,20 +326,23 @@ export async function ask9Router(
         throw new Error(`9Router [${targetModel}] error ${response.status}: ${errorBody}`);
       }
 
-      // Baca stream SSE token per token
+      // Baca stream SSE token per token dengan buffer akumulator (mencegah teks terpotong di perbatasan chunk)
       let fullAnswer = '';
       
       if (response.body) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let sseBuffer = '';
         
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
+            sseBuffer += decoder.decode(value, { stream: true });
+            const lines = sseBuffer.split('\n');
+            // Simpan baris terakhir yang belum selesai di buffer
+            sseBuffer = lines.pop() || '';
             
             for (const line of lines) {
               const trimmed = line.trim();
@@ -358,8 +356,21 @@ export async function ask9Router(
                            || '';
                 fullAnswer += delta;
               } catch {
-                // abaikan baris SSE yang rusak
+                // abaikan baris yang rusak
               }
+            }
+          }
+
+          // Proses baris terakhir jika masih ada di buffer
+          if (sseBuffer.trim().startsWith('data: ') && !sseBuffer.includes('[DONE]')) {
+            try {
+              const parsed = JSON.parse(sseBuffer.trim().slice(6));
+              const delta = parsed.choices?.[0]?.delta?.content 
+                         || parsed.choices?.[0]?.message?.content 
+                         || '';
+              fullAnswer += delta;
+            } catch {
+              // ignore
             }
           }
         } catch (streamErr: any) {

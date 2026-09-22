@@ -492,7 +492,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#080b11] text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white dark:selection:bg-slate-700 dark:selection:text-white transition-colors duration-150">
       {/* Top Navbar — Restrained, dignified, craftsmanship */}
-      <header className="border-b border-slate-200 dark:border-white/[0.08] bg-white/95 dark:bg-[#0c1017]/90 backdrop-blur-md sticky top-0 z-30 px-3 sm:px-6 py-2.5 sm:py-3 transition-colors">
+      <header className="border-b border-slate-200 dark:border-white/[0.08] bg-white/95 dark:bg-[#0c1017]/90 backdrop-blur-md sticky top-0 z-30 px-3 sm:px-6 py-2.5 sm:py-3 transition-colors print:hidden">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           {/* Brand Mark & Title */}
           <div className="flex items-center gap-3 min-w-0">
