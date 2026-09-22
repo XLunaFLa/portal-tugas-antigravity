@@ -99,6 +99,13 @@ AUTO-DETEKSI JENIS SOAL:
 - Identifikasi setiap elemen visual: angka, label sumbu, warna, bentuk geometri, garis, simbol, dan keterangan.
 - Gunakan data dari gambar sebagai dasar kalkulasi. Jangan asumsikan nilai tanpa melihat gambar terlebih dahulu.
 - Jika soal menunjuk gambar tertentu (misal: "lihat gambar di bawah", "[Gambar/Diagram Terlampir]"), obligasi jawab berdasarkan konten visual tersebut.
+
+10. EFISIENSI & KEPADATAN PEMBAHASAN UNTUK PAKET SOAL BANYAK (10–40 SOAL):
+- Untuk dokumen yang berisi banyak soal (misal: 10 sampai 40 butir soal), tuliskan pembahasan secara PADAT, TEPAT SASARAN, dan LUGAS:
+  * Nomor: ### Soal X
+  * Baris 1: **Jawaban: [Pilihan Opsi & Isinya]** (Contoh: **Jawaban: B. 470 cm²**)
+  * Langkah Inti / Kalkulasi: Tuliskan rumus dan langkah kalkulasi matematis pokok (2–4 baris ringkas, bersih, tanpa pengantar basa-basi).
+- Dilarang membuat esai panjang bertele-tele pada tiap butir soal pilihan ganda agar seluruh 40 nomor tuntas terjawab lengkap dengan cepat.
 `;
 
 // Helper to format answers cleanly into lines/bullets if squashed
@@ -287,18 +294,18 @@ export async function ask9Router(
 
   for (const [idx, targetModel] of uniqueModels.entries()) {
     const elapsed = Date.now() - startTime;
-    const remainingBudget = 55000 - elapsed; // Vercel limit = 60s
+    const remainingBudget = 58000 - elapsed; // Vercel maxDuration = 60s
     if (idx > 0 && remainingBudget < 15000) {
-      // Jika sisa waktu Vercel kurang dari 15s, jangan mulai attempt baru
       break;
     }
-    const timeoutMs = Math.max(10000, Math.min(remainingBudget - 2000, 52000));
+    // Beri 9Router waktu maksimal 57.5 detik sebelum batas 60 detik Vercel tercapai
+    const timeoutMs = Math.max(10000, Math.min(remainingBudget - 1000, 57500));
 
     try {
       const payload = {
         model: targetModel,
         messages: [{ role: 'user', content: contentParts }],
-        stream: true,       // STREAMING: token langsung mengalir
+        stream: true,
         temperature: 0.2,
         max_tokens: 8192,
       };
@@ -356,14 +363,13 @@ export async function ask9Router(
         } catch (streamErr: any) {
           // Jika timeout abort terjadi di tengah stream, gunakan apa yang sudah terkumpul
           if (fullAnswer.length > 200) {
-            console.warn(`[9Router] Streaming interrupted at ${fullAnswer.length} chars (likely timeout), using partial answer`);
+            console.warn(`[9Router] Streaming interrupted at ${fullAnswer.length} chars, returning partial answer`);
             clearTimeout(timeoutId);
             return fullAnswer;
           }
           throw streamErr;
         }
       } else {
-        // Fallback: respons non-streaming (OpenAI format biasa)
         const rawText = await response.text();
         try {
           const result = JSON.parse(rawText);
@@ -381,8 +387,12 @@ export async function ask9Router(
 
       return fullAnswer;
     } catch (err: any) {
-      console.warn(`9Router model ${targetModel} attempt failed:`, err.message);
-      lastError = err;
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        lastError = new Error('Batas waktu 58 detik terlampaui (limit serverless Vercel). Berkas memuat 40 soal lengkap + 23 gambar. Silakan klik "Kerjakan Tugas" lagi atau gunakan versi lokal (localhost:3000) tanpa batas waktu.');
+      } else {
+        lastError = err;
+      }
+      console.warn(`9Router model ${targetModel} attempt failed:`, lastError.message);
     }
   }
 
