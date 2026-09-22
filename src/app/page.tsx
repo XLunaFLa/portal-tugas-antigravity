@@ -17,9 +17,20 @@ import {
   X,
   Cpu,
   ShieldCheck,
-  RefreshCw
+  RefreshCw,
+  FileDown,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import {
+  type FileType,
+  detectRequestedFileType,
+  fileTypeLabel,
+  fileTypeEmoji,
+  downloadAsWord,
+  downloadAsExcel,
+  downloadAsPptx,
+  downloadAsPdf,
+} from '@/lib/fileGenerator';
 
 interface ImageItem {
   id: string;
@@ -57,6 +68,11 @@ export default function Home() {
     text: string;
     images: ImageItem[];
   } | null>(null);
+
+  // File download states
+  const [requestedFileType, setRequestedFileType] = useState<FileType | null>(null);
+  const [customFilename, setCustomFilename] = useState('');
+  const [fileDownloading, setFileDownloading] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -197,6 +213,15 @@ export default function Home() {
     const currentPromptText = promptText;
     const currentImages = [...images];
 
+    // Detect if user wants output as a file
+    const detectedFileType = detectRequestedFileType(currentPromptText);
+    setRequestedFileType(detectedFileType);
+    if (detectedFileType) {
+      // Pre-fill filename from first few words of prompt
+      const words = currentPromptText.replace(/[^a-zA-Z0-9\s]/g, '').trim().split(/\s+/).slice(0, 5);
+      setCustomFilename(words.join('_'));
+    }
+
     setLoading(true);
     setAnswer(null);
     setUsedEngine(null);
@@ -264,6 +289,24 @@ export default function Home() {
     navigator.clipboard.writeText(answer);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleFileDownload = async () => {
+    if (!answer || !requestedFileType) return;
+    const fname = customFilename.trim() || 'Jawaban_Tugas';
+    setFileDownloading(true);
+    try {
+      switch (requestedFileType) {
+        case 'docx': await downloadAsWord(answer, fname); break;
+        case 'xlsx': await downloadAsExcel(answer, fname); break;
+        case 'pptx': await downloadAsPptx(answer, fname); break;
+        case 'pdf':  await downloadAsPdf(answer, fname); break;
+      }
+    } catch (e: any) {
+      alert(`Gagal membuat file: ${e.message}`);
+    } finally {
+      setFileDownloading(false);
+    }
   };
 
   return (
@@ -761,6 +804,67 @@ export default function Home() {
               >
                 Salin lagi
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── File Download Section ── Only shown when user requested a file */}
+        {answer && !loading && requestedFileType && (
+          <div className="bg-gradient-to-r from-emerald-950/40 to-teal-950/30 border border-emerald-700/40 rounded-2xl p-4 sm:p-5 flex flex-col gap-3 animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                <FileDown className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-emerald-300">
+                  {fileTypeEmoji(requestedFileType)} Unduh sebagai {fileTypeLabel(requestedFileType)}
+                </p>
+                <p className="text-[11px] text-slate-400">Masukkan nama file, lalu klik tombol unduh</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                value={customFilename}
+                onChange={(e) => setCustomFilename(e.target.value)}
+                placeholder="Nama file (contoh: Makalah_Globalisasi)"
+                className="flex-1 bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition"
+              />
+              <button
+                type="button"
+                onClick={handleFileDownload}
+                disabled={fileDownloading}
+                className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 transition duration-200 shrink-0"
+              >
+                {fileDownloading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Membuat file...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="w-4 h-4" />
+                    <span className="sm:hidden">Unduh</span>
+                    <span className="hidden sm:inline">Unduh {fileTypeLabel(requestedFileType)}</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Allow changing file type */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] text-slate-500">Format lain:</span>
+              {(['docx', 'xlsx', 'pptx', 'pdf'] as FileType[]).filter(t => t !== requestedFileType).map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setRequestedFileType(t)}
+                  className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+                >
+                  {fileTypeEmoji(t)} {fileTypeLabel(t)}
+                </button>
+              ))}
             </div>
           </div>
         )}
