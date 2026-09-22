@@ -1,10 +1,20 @@
 // Portal Tugas — hanya menggunakan 9Router Antigravity (tidak ada Google API langsung)
-const TUNNEL_URL = 'https://pest-forwarding-personalized-much.trycloudflare.com/v1';
-const LOCAL_URL = 'http://127.0.0.1:20129/v1';
+export const ACTIVE_TUNNEL_URL = 'https://pest-forwarding-personalized-much.trycloudflare.com/v1';
+export const LOCAL_URL = 'http://127.0.0.1:20129/v1';
 
-const NINE_ROUTER_BASE_URL = process.env.NINE_ROUTER_BASE_URL 
-  || (process.env.VERCEL ? TUNNEL_URL : LOCAL_URL);
-const NINE_ROUTER_API_KEY = process.env.NINE_ROUTER_API_KEY || 'sk-87aec067d631e9b8-zhlati-3571faa8';
+export function getEffectiveBaseUrl(): string {
+  if (process.env.VERCEL) {
+    const envUrl = process.env.NINE_ROUTER_BASE_URL;
+    // Abaikan URL tunnel lama yang sudah expired di Vercel Dashboard
+    if (envUrl && !envUrl.includes('freelance-officers-differences-really')) {
+      return envUrl;
+    }
+    return ACTIVE_TUNNEL_URL;
+  }
+  return process.env.NINE_ROUTER_BASE_URL || LOCAL_URL;
+}
+
+export const NINE_ROUTER_API_KEY = process.env.NINE_ROUTER_API_KEY || 'sk-87aec067d631e9b8-zhlati-3571faa8';
 
 export interface ImagePart {
   mimeType: string;
@@ -372,7 +382,8 @@ export async function ask9Router(
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      const response = await fetch(`${NINE_ROUTER_BASE_URL}/chat/completions`, {
+      const baseUrl = getEffectiveBaseUrl();
+      const fetchPayload = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -380,7 +391,19 @@ export async function ask9Router(
         },
         body: JSON.stringify(payload),
         signal: controller.signal,
-      });
+      };
+
+      let response: Response;
+      try {
+        response = await fetch(`${baseUrl}/chat/completions`, fetchPayload);
+      } catch (fetchErr: any) {
+        if (baseUrl !== ACTIVE_TUNNEL_URL && (fetchErr.message?.includes('fetch failed') || fetchErr.code === 'ECONNREFUSED')) {
+          console.warn(`[9Router] Fetch to ${baseUrl} failed, falling back to ACTIVE_TUNNEL_URL:`, fetchErr.message);
+          response = await fetch(`${ACTIVE_TUNNEL_URL}/chat/completions`, fetchPayload);
+        } else {
+          throw fetchErr;
+        }
+      }
 
       if (!response.ok) {
         clearTimeout(timeoutId);
