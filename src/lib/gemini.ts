@@ -1,6 +1,6 @@
 // Portal Tugas — hanya menggunakan 9Router Antigravity (tidak ada Google API langsung)
-const NINE_ROUTER_BASE_URL = process.env.NINE_ROUTER_BASE_URL || 'http://127.0.0.1:20129/v1';
-const NINE_ROUTER_API_KEY = process.env.NINE_ROUTER_API_KEY || 'sk-87aec067d631e9b8-5e1at0-4185ba89';
+const NINE_ROUTER_BASE_URL = process.env.NINE_ROUTER_BASE_URL || 'https://freelance-officers-differences-really.trycloudflare.com/v1';
+const NINE_ROUTER_API_KEY = process.env.NINE_ROUTER_API_KEY || 'sk-87aec067d631e9b8-zhlati-3571faa8';
 
 export interface ImagePart {
   mimeType: string;
