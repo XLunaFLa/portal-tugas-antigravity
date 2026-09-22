@@ -212,28 +212,18 @@ export async function ask9Router(
     });
   }
 
-  // Model fallback order inside 9Router
-  // Antigravity OAuth requires Gemini models for Multimodal Vision (Claude models in Antigravity are text-only)
-  const modelsToTry = images.length > 0
-    ? [
-        model.includes('claude') ? 'ag/gemini-3.8-flash-high' : model,
-        'ag/gemini-3.8-flash-high',
-        'ag/gemini-3.7-flash-high',
-        'ag/gemini-pro-agent',
-        'ag/gemini-3.6-flash-high',
-      ]
-    : [
-        model,
-        'ag/claude-sonnet-4-6',
-        'ag/gemini-3.8-flash-high',
-        'ag/claude-opus-4-6-thinking',
-        'ag/gemini-3.6-flash-high',
-      ];
-  const uniqueModels = Array.from(new Set(modelsToTry));
+  // High-efficiency, fast fallback inside 9Router (capped at 2 fast attempts to stay well within Vercel timeout)
+  const primaryModel = (images.length > 0 && model.includes('claude'))
+    ? 'ag/gemini-3.8-flash-high'
+    : model;
+  const secondaryModel = primaryModel === 'ag/gemini-3.8-flash-high' 
+    ? 'ag/gemini-3.7-flash-high' 
+    : 'ag/gemini-3.8-flash-high';
+  const uniqueModels = Array.from(new Set([primaryModel, secondaryModel]));
 
   let lastError: any = null;
 
-  for (const targetModel of uniqueModels) {
+  for (const [idx, targetModel] of uniqueModels.entries()) {
     try {
       const payload = {
         model: targetModel,
@@ -248,7 +238,8 @@ export async function ask9Router(
       };
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 18000);
+      const timeoutMs = idx === 0 ? 22000 : 12000;
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       const response = await fetch(`${NINE_ROUTER_BASE_URL}/chat/completions`, {
         method: 'POST',
