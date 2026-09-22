@@ -13,8 +13,8 @@ function latexToOmmlComponent(latex: string, ImportedXmlComponent: any): any | n
     const match = html.match(/<math[\s\S]*?<\/math>/);
     if (!match) return null;
     const omml = mml2omml(match[0]);
-    if (!omml || !omml.includes('<m:oMath')) return null;
-    return ImportedXmlComponent.fromXmlString(omml);
+    const comp = ImportedXmlComponent.fromXmlString(omml);
+    return comp && comp.root && comp.root[0] ? comp.root[0] : comp;
   } catch {
     return null;
   }
