@@ -51,7 +51,7 @@ export default function Home() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [engineChoice, setEngineChoice] = useState<'auto' | '9router' | 'gemini'>('auto');
-  const [selectedModel, setSelectedModel] = useState('ag/gemini-3.6-flash-high');
+  const [selectedModel, setSelectedModel] = useState('ag/claude-sonnet-4-6');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -215,9 +215,24 @@ export default function Home() {
             className="text-xs bg-slate-900/90 border border-slate-700 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer"
             title="Pilih Engine AI"
           >
-            <option value="auto">⚡ Auto (9Router + Cloud Fallback)</option>
-            <option value="9router">🚀 9Router (Antigravity Pool)</option>
-            <option value="gemini">☁️ Google Gemini Direct</option>
+            <option value="auto">⚡ Auto (9Router + Cloud)</option>
+            <option value="9router">🚀 9Router Lokal</option>
+            <option value="gemini">☁️ Google Cloud Direct</option>
+          </select>
+
+          {/* Model Selector (Default: Claude Sonnet 4.6 / Gemini 3.8 Flash HIGH) */}
+          <select
+            value={selectedModel}
+            onChange={(e: any) => setSelectedModel(e.target.value)}
+            className="text-xs bg-slate-900/90 border border-slate-700 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer font-medium"
+            title="Pilih Model AI Tertinggi"
+          >
+            <option value="ag/claude-sonnet-4-6">👑 Claude Sonnet 4.6 (Default)</option>
+            <option value="ag/gemini-3.8-flash-high">⚡ Gemini 3.8 Flash HIGH</option>
+            <option value="ag/claude-opus-4-6-thinking">🧠 Claude Opus 4.6 Thinking</option>
+            <option value="ag/gemini-3.7-flash-high">🔥 Gemini 3.7 Flash HIGH</option>
+            <option value="ag/gemini-3.6-flash-high">🚀 Gemini 3.6 Flash HIGH</option>
+            <option value="ag/gpt-oss-120b-medium">🤖 GPT-OSS 120B</option>
           </select>
 
           {/* History Button */}

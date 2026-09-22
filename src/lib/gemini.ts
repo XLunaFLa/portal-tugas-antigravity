@@ -23,11 +23,11 @@ Pedoman Menjawab Soal Diskusi / Esai:
 4. Jaga agar bahasa tetap baku, akademis, dan sopan dalam bahasa Indonesia yang baik dan benar.
 `;
 
-// 1. Solver via 9Router (Pool 10 Akun Antigravity OAuth)
+// 1. Solver via 9Router (Default: ag/claude-sonnet-4-6 or ag/gemini-3.8-flash-high)
 export async function ask9Router(
   promptText: string, 
   images: ImagePart[] = [], 
-  model = 'ag/gemini-3.6-flash-high'
+  model = 'ag/claude-sonnet-4-6'
 ): Promise<string> {
   const contentParts: any[] = [];
 
@@ -46,53 +46,80 @@ export async function ask9Router(
     });
   }
 
-  const payload = {
+  // Model fallback order inside 9Router
+  const modelsToTry = [
     model,
-    messages: [
-      {
-        role: 'user',
-        content: contentParts,
-      },
-    ],
-    stream: false,
-    temperature: 0.2,
-  };
+    'ag/claude-sonnet-4-6',
+    'ag/gemini-3.8-flash-high',
+    'ag/claude-opus-4-6-thinking',
+    'ag/gemini-3.6-flash-high',
+  ];
+  const uniqueModels = Array.from(new Set(modelsToTry));
 
-  const response = await fetch(`${NINE_ROUTER_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${NINE_ROUTER_API_KEY}`,
-    },
-    body: JSON.stringify(payload),
-  });
+  let lastError: any = null;
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`9Router error ${response.status}: ${errorBody}`);
+  for (const targetModel of uniqueModels) {
+    try {
+      const payload = {
+        model: targetModel,
+        messages: [
+          {
+            role: 'user',
+            content: contentParts,
+          },
+        ],
+        stream: false,
+        temperature: 0.2,
+      };
+
+      const response = await fetch(`${NINE_ROUTER_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${NINE_ROUTER_API_KEY}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`9Router [${targetModel}] error ${response.status}: ${errorBody}`);
+      }
+
+      const result = await response.json();
+      const answer = result.choices?.[0]?.message?.content;
+
+      if (!answer) {
+        throw new Error(`9Router [${targetModel}] mengembalikan respons kosong.`);
+      }
+
+      return answer;
+    } catch (err: any) {
+      console.warn(`9Router model ${targetModel} attempt failed:`, err.message);
+      lastError = err;
+    }
   }
 
-  const result = await response.json();
-  const answer = result.choices?.[0]?.message?.content;
-
-  if (!answer) {
-    throw new Error('9Router mengembalikan respons kosong.');
-  }
-
-  return answer;
+  throw new Error(`Semua model 9Router gagal. Error terakhir: ${lastError?.message || 'Unknown error'}`);
 }
 
 // 2. Solver via Google Gemini Cloud Direct (Official Google API)
 export async function askGemini(
   promptText: string, 
   images: ImagePart[] = [], 
-  preferredModel = 'gemini-3.6-flash'
+  preferredModel = 'gemini-3.8-flash'
 ): Promise<string> {
   if (!GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY belum dikonfigurasi.');
   }
 
-  const modelsToTry = [preferredModel, 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-latest'];
+  const modelsToTry = [
+    preferredModel, 
+    'gemini-3.8-flash', 
+    'gemini-3.7-flash', 
+    'gemini-3.6-flash', 
+    'gemini-flash-latest'
+  ];
   const uniqueModels = Array.from(new Set(modelsToTry));
 
   let lastError: any = null;
@@ -159,15 +186,16 @@ export async function solveWithDualEngine(
   promptText: string,
   images: ImagePart[] = [],
   engineChoice = 'auto', // 'auto' | '9router' | 'gemini'
-  modelChoice = 'ag/gemini-3.6-flash-high'
+  modelChoice = 'ag/claude-sonnet-4-6'
 ): Promise<{ answer: string; usedEngine: string }> {
   // If user chose 9Router or Auto:
   if (engineChoice === '9router' || engineChoice === 'auto') {
     try {
       const answer = await ask9Router(promptText, images, modelChoice);
-      return { answer, usedEngine: '9Router (Pool 10 Akun Antigravity OAuth)' };
+      const cleanModelName = modelChoice.replace('ag/', '').toUpperCase();
+      return { answer, usedEngine: `9Router [${cleanModelName}] (10 Akun Antigravity)` };
     } catch (err: any) {
-      console.warn('9Router failed or unreachable, trying fallback to Google Gemini Cloud...', err.message);
+      console.warn('9Router failed or unreachable, falling back to Google Cloud Direct...', err.message);
       if (engineChoice === '9router') {
         throw new Error(`9Router tidak dapat dihubungi (${err.message}). Pastikan 9Router atau Tunnel di PC aktif.`);
       }
@@ -175,6 +203,6 @@ export async function solveWithDualEngine(
   }
 
   // Fallback to Google Gemini Cloud Direct
-  const answer = await askGemini(promptText, images, 'gemini-3.6-flash');
-  return { answer, usedEngine: 'Google Gemini Direct (Cloud Engine)' };
+  const answer = await askGemini(promptText, images, 'gemini-3.8-flash');
+  return { answer, usedEngine: 'Google Gemini 3.8 Flash (Cloud Direct)' };
 }
