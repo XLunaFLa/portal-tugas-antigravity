@@ -268,109 +268,158 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col">
       {/* Top Navbar */}
-      <header className="border-b border-slate-800 bg-[#0d1322]/80 backdrop-blur sticky top-0 z-30 px-4 lg:px-8 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <Sparkles className="w-5 h-5 text-white" />
+      {/* Top Navbar */}
+      <header className="border-b border-slate-800 bg-[#0d1322]/90 backdrop-blur sticky top-0 z-30 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
+          {/* Logo & Brand */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base lg:text-lg font-bold tracking-tight text-white flex items-center gap-1.5 truncate">
+                <span>Portal Tugas</span>
+                <span className="text-[10px] sm:text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hidden sm:inline-flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" /> 9Router + Cloud
+                </span>
+              </h1>
+              <p className="text-[11px] text-slate-400 hidden md:block truncate">
+                Auto-Solver Kuis Gambar & Diskusi Forum Kuliah (10 Akun Antigravity OAuth)
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-base lg:text-lg font-bold tracking-tight text-white flex items-center gap-2">
-              Portal Tugas Antigravity
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3" /> 9Router + Cloud
-              </span>
-            </h1>
-            <p className="text-xs text-slate-400 hidden sm:block">
-              Auto-Solver Kuis Gambar & Diskusi Forum Kuliah (10 Akun Antigravity OAuth)
-            </p>
+
+          {/* Desktop / Tablet Selectors */}
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
+            <select
+              value={engineChoice}
+              onChange={(e: any) => setEngineChoice(e.target.value)}
+              className="text-xs bg-slate-900/90 border border-slate-700 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer"
+              title="Pilih Engine AI"
+            >
+              <option value="auto">⚡ Auto Engine</option>
+              <option value="9router">🚀 9Router Lokal</option>
+              <option value="gemini">☁️ Google Cloud Direct</option>
+            </select>
+
+            <select
+              value={selectedModel}
+              onChange={(e: any) => setSelectedModel(e.target.value)}
+              className="text-xs max-w-[200px] lg:max-w-none bg-slate-900/90 border border-slate-700 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer font-medium truncate"
+              title="Pilih Model AI Tertinggi"
+            >
+              <option value="ag/gemini-3.8-flash-high">⚡ Gemini 3.8 Flash HIGH (Vision)</option>
+              <option value="ag/claude-sonnet-4-6">👑 Claude Sonnet 4.6 (Esai & Diskusi)</option>
+              <option value="ag/gemini-3.7-flash-high">🔥 Gemini 3.7 Flash HIGH</option>
+              <option value="ag/claude-opus-4-6-thinking">🧠 Claude Opus 4.6 Thinking</option>
+              <option value="ag/gemini-pro-agent">💎 Gemini Pro Agent (Vision)</option>
+              <option value="ag/gemini-3.6-flash-high">🚀 Gemini 3.6 Flash HIGH</option>
+              <option value="ag/gpt-oss-120b-medium">🤖 GPT-OSS 120B</option>
+            </select>
+
+            <button
+              onClick={() => {
+                setShowHistory(true);
+                fetchHistory();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition text-slate-200 shrink-0"
+            >
+              <Clock className="w-3.5 h-3.5 text-blue-400" />
+              <span>Riwayat ({history.length})</span>
+            </button>
+          </div>
+
+          {/* Mobile Right: Riwayat Button */}
+          <div className="flex sm:hidden items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => {
+                setShowHistory(true);
+                fetchHistory();
+              }}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-200"
+            >
+              <Clock className="w-3.5 h-3.5 text-blue-400" />
+              <span>Riwayat ({history.length})</span>
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          {/* Engine Selector */}
+        {/* Mobile Secondary Bar for Engine & Model */}
+        <div className="sm:hidden grid grid-cols-2 gap-1.5 pt-2 mt-2 border-t border-slate-800/80">
           <select
             value={engineChoice}
             onChange={(e: any) => setEngineChoice(e.target.value)}
-            className="text-xs bg-slate-900/90 border border-slate-700 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer"
-            title="Pilih Engine AI"
+            className="text-[11px] bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none"
           >
-            <option value="auto">⚡ Auto (9Router + Cloud)</option>
+            <option value="auto">⚡ Auto Engine</option>
             <option value="9router">🚀 9Router Lokal</option>
-            <option value="gemini">☁️ Google Cloud Direct</option>
+            <option value="gemini">☁️ Cloud Direct</option>
           </select>
 
-          {/* Model Selector (Default: Claude Sonnet 4.6 / Gemini 3.8 Flash HIGH) */}
           <select
             value={selectedModel}
             onChange={(e: any) => setSelectedModel(e.target.value)}
-            className="text-xs bg-slate-900/90 border border-slate-700 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer font-medium"
-            title="Pilih Model AI Tertinggi"
+            className="text-[11px] bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none truncate font-medium"
           >
-            <option value="ag/gemini-3.8-flash-high">⚡ Gemini 3.8 Flash HIGH (Multimodal Vision)</option>
-            <option value="ag/claude-sonnet-4-6">👑 Claude Sonnet 4.6 (Esai & Diskusi)</option>
-            <option value="ag/gemini-3.7-flash-high">🔥 Gemini 3.7 Flash HIGH</option>
-            <option value="ag/claude-opus-4-6-thinking">🧠 Claude Opus 4.6 Thinking (Esai & Diskusi)</option>
-            <option value="ag/gemini-pro-agent">💎 Gemini Pro Agent (Vision & Penalaran)</option>
-            <option value="ag/gemini-3.6-flash-high">🚀 Gemini 3.6 Flash HIGH</option>
-            <option value="ag/gpt-oss-120b-medium">🤖 GPT-OSS 120B</option>
+            <option value="ag/gemini-3.8-flash-high">⚡ Gemini 3.8 (Vision)</option>
+            <option value="ag/claude-sonnet-4-6">👑 Claude 4.6 (Esai)</option>
+            <option value="ag/gemini-3.7-flash-high">🔥 Gemini 3.7</option>
+            <option value="ag/claude-opus-4-6-thinking">🧠 Claude Opus</option>
+            <option value="ag/gemini-pro-agent">💎 Gemini Pro</option>
+            <option value="ag/gemini-3.6-flash-high">🚀 Gemini 3.6</option>
           </select>
-
-          {/* History Button */}
-          <button
-            onClick={() => {
-              setShowHistory(true);
-              fetchHistory();
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition text-slate-200"
-          >
-            <Clock className="w-3.5 h-3.5 text-blue-400" />
-            <span>Riwayat ({history.length})</span>
-          </button>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6 flex flex-col gap-6">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 flex flex-col gap-4 sm:gap-6">
         {/* Banner / Info Card */}
-        <div className="bg-gradient-to-r from-blue-950/40 via-indigo-950/30 to-slate-900/40 border border-blue-900/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-slate-300">
+        <div className="bg-gradient-to-r from-blue-950/40 via-indigo-950/30 to-slate-900/40 border border-blue-900/30 rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-3 text-xs text-slate-300">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+            <div className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 text-sm">
               💡
             </div>
-            <span>
-              <strong>Cara Cepat:</strong> Screenshot soal kuis (<kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200">Win+Shift+S</kbd>), lalu langsung tekan <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200">Ctrl + V</kbd> di halaman ini!
-            </span>
+            <div className="leading-snug">
+              <span className="hidden sm:inline">
+                <strong>Tips Cepat Laptop:</strong> Screenshot soal kuis (<kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200">Win+Shift+S</kbd>), lalu langsung tekan <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200">Ctrl + V</kbd> di halaman ini!
+              </span>
+              <span className="sm:hidden text-[11px]">
+                <strong>Tips HP / Tablet:</strong> Ketuk kotak upload di bawah untuk mengambil foto langsung atau pilih screenshot soal dari galeri HP kamu!
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Mode Selector Tabs */}
-        <div className="flex items-center gap-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-800 w-fit">
+        <div className="grid grid-cols-2 sm:flex sm:w-fit w-full gap-1.5 bg-slate-900/80 p-1.5 rounded-xl border border-slate-800">
           <button
             onClick={() => setActiveTab('kuis')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-center ${
               activeTab === 'kuis'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
             }`}
           >
-            <Camera className="w-4 h-4" />
-            <span>Kuis Bergambar (Screenshot)</span>
+            <Camera className="w-4 h-4 shrink-0" />
+            <span className="truncate">Kuis Gambar</span>
+            <span className="hidden md:inline">(Screenshot)</span>
           </button>
           <button
             onClick={() => setActiveTab('diskusi')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-center ${
               activeTab === 'diskusi'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
             }`}
           >
-            <FileText className="w-4 h-4" />
-            <span>Tugas Diskusi / Esai Teks</span>
+            <FileText className="w-4 h-4 shrink-0" />
+            <span className="truncate">Tugas Esai</span>
+            <span className="hidden md:inline">/ Diskusi</span>
           </button>
         </div>
 
         {/* Input Card */}
-        <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl flex flex-col gap-4">
+        <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col gap-4">
           {/* Tab 1: Kuis Bergambar */}
           {activeTab === 'kuis' && (
             <div className="flex flex-col gap-3">
@@ -382,7 +431,7 @@ export default function Home() {
                   e.preventDefault();
                   if (e.dataTransfer.files) handleFileUpload(e.dataTransfer.files);
                 }}
-                className="border-2 border-dashed border-slate-700 hover:border-blue-500/60 bg-slate-900/50 hover:bg-slate-900/90 transition rounded-xl p-6 sm:p-8 flex flex-col items-center justify-center gap-2.5 cursor-pointer text-center group"
+                className="border-2 border-dashed border-slate-700 hover:border-blue-500/60 bg-slate-900/50 hover:bg-slate-900/90 transition rounded-xl p-5 sm:p-8 flex flex-col items-center justify-center gap-2.5 cursor-pointer text-center group"
               >
                 <input
                   ref={fileInputRef}
@@ -394,15 +443,16 @@ export default function Home() {
                     if (e.target.files) handleFileUpload(e.target.files);
                   }}
                 />
-                <div className="w-12 h-12 rounded-full bg-blue-500/10 group-hover:bg-blue-500/20 text-blue-400 flex items-center justify-center transition">
-                  <ImageIcon className="w-6 h-6" />
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-blue-500/10 group-hover:bg-blue-500/20 text-blue-400 flex items-center justify-center transition">
+                  <ImageIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-200">
-                    Klik untuk pilih gambar atau Seret tangkapan layar ke sini
+                  <p className="text-xs sm:text-sm font-semibold text-slate-200">
+                    <span className="hidden sm:inline">Klik untuk pilih gambar atau Seret tangkapan layar ke sini</span>
+                    <span className="sm:hidden">Ketuk untuk pilih foto / screenshot kuis</span>
                   </p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Bisa banyak gambar sekaligus (Mendukung PNG, JPG, WebP)
+                  <p className="text-[11px] sm:text-xs text-slate-400 mt-1">
+                    Bisa banyak gambar sekaligus (PNG, JPG, WebP)
                   </p>
                 </div>
               </div>
@@ -471,11 +521,11 @@ export default function Home() {
 
           {/* Action Row */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-slate-800">
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[11px] text-slate-400 hidden sm:inline-block">
               Tekan <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200">Ctrl + Enter</kbd> untuk langsung jawab
             </span>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               {(images.length > 0 || promptText.trim().length > 0) && (
                 <button
                   type="button"
@@ -483,7 +533,7 @@ export default function Home() {
                     setImages([]);
                     setPromptText('');
                   }}
-                  className="px-3 py-2.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-400 hover:text-slate-200 transition"
+                  className="px-3.5 py-2.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-400 hover:text-slate-200 transition shrink-0"
                 >
                   Reset
                 </button>
@@ -493,7 +543,7 @@ export default function Home() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading || (images.length === 0 && !promptText.trim())}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold px-6 py-2.5 rounded-xl shadow-lg shadow-blue-600/25 transition duration-200"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold px-6 py-3 sm:py-2.5 rounded-xl shadow-lg shadow-blue-600/25 transition duration-200"
               >
                 {loading ? (
                   <>
@@ -552,10 +602,10 @@ export default function Home() {
             className="bg-[#0f172a] border border-blue-500/30 rounded-2xl p-5 sm:p-7 shadow-2xl flex flex-col gap-5 animate-fadeIn"
           >
             {/* Header of Answer Card */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                <h2 className="text-base font-bold text-white tracking-tight">
+                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">
                   Hasil Jawaban Tugas
                 </h2>
                 {usedEngine && (
@@ -565,11 +615,11 @@ export default function Home() {
                 )}
               </div>
 
-              {/* Big Copy Button (For WordPad) */}
+              {/* Copy Button */}
               <button
                 type="button"
                 onClick={handleCopy}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-lg transition duration-200 ${
+                className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold shadow-lg transition duration-200 ${
                   copied
                     ? 'bg-emerald-600 text-white shadow-emerald-600/30'
                     : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20 hover:scale-[1.02]'
@@ -577,13 +627,15 @@ export default function Home() {
               >
                 {copied ? (
                   <>
-                    <Check className="w-4 h-4" />
-                    <span>Tersalin! Tinggal Ctrl+V di WordPad</span>
+                    <Check className="w-4 h-4 shrink-0" />
+                    <span className="sm:hidden">Tersalin! Siap Tempel</span>
+                    <span className="hidden sm:inline">Tersalin! Tinggal Ctrl+V di WordPad</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="w-4 h-4" />
-                    <span>Salin Jawaban (Siap Tempel WordPad)</span>
+                    <Copy className="w-4 h-4 shrink-0" />
+                    <span className="sm:hidden">Salin Jawaban</span>
+                    <span className="hidden sm:inline">Salin Jawaban (Siap Tempel WordPad)</span>
                   </>
                 )}
               </button>
@@ -653,7 +705,7 @@ export default function Home() {
       {/* History Drawer */}
       {showHistory && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-md bg-[#0d1322] h-full border-l border-slate-800 shadow-2xl flex flex-col p-6 overflow-y-auto">
+          <div className="w-full max-w-md bg-[#0d1322] h-full border-l border-slate-800 shadow-2xl flex flex-col p-4 sm:p-6 overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-blue-400" />

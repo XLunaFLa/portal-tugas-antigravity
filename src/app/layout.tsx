@@ -6,6 +6,13 @@ export const metadata: Metadata = {
   description: 'Asisten Pengerjaan Kuis & Forum Diskusi Kuliah Cepat dan Akurat',
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#090d16',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
