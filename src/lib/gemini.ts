@@ -114,11 +114,11 @@ export async function askGemini(
   }
 
   const modelsToTry = [
+    'gemini-3.5-flash',
     preferredModel, 
-    'gemini-3.8-flash', 
-    'gemini-3.7-flash', 
     'gemini-3.6-flash', 
-    'gemini-flash-latest'
+    'gemini-3.7-flash',
+    'gemini-3.8-flash'
   ];
   const uniqueModels = Array.from(new Set(modelsToTry));
 
@@ -203,6 +203,6 @@ export async function solveWithDualEngine(
   }
 
   // Fallback to Google Gemini Cloud Direct
-  const answer = await askGemini(promptText, images, 'gemini-3.8-flash');
-  return { answer, usedEngine: 'Google Gemini 3.8 Flash (Cloud Direct)' };
+  const answer = await askGemini(promptText, images, 'gemini-3.5-flash');
+  return { answer, usedEngine: 'Google Gemini 3.5 Flash (Cloud Direct)' };
 }
