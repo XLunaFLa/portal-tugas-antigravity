@@ -131,8 +131,12 @@ export function cleanMathAndTypography(raw: string): string {
 
   // 3. LaTeX commands & wrappers
   s = s.replace(/\\(?:text|mathrm|mathbf)\{([^}]+)\}/g, '$1');
-  s = s.replace(/\\left\s*([(\[{])/g, '$1');
-  s = s.replace(/\\right\s*([)\]}])/g, '$1');
+  s = s.replace(/\\(?:big|Big|bigg|Bigg)[lr]?/g, '');
+  s = s.replace(/\\left\s*([(\[{.])/g, '$1').replace(/\\left\./g, '');
+  s = s.replace(/\\right\s*([)\]}.])/g, '$1').replace(/\\right\./g, '');
+  s = s.replace(/\\\{/g, '{').replace(/\\\}/g, '}');
+  s = s.replace(/\\[,;:!]/g, ' ');
+  s = s.replace(/\\(?:quad|qquad)\b/g, '   ');
   s = s.replace(/\\(?:implies|Rightarrow)\b/g, ' ⇒ ');
   s = s.replace(/\\(?:rightarrow|to)\b/g, ' → ');
   s = s.replace(/\\int_\{([^{}]+)\}\^\{([^{}]+)\}/g, '∫[$1 to $2] ');
@@ -150,7 +154,8 @@ export function cleanMathAndTypography(raw: string): string {
   s = s.replace(/\\neq/g, ' ≠ ');
   s = s.replace(/\\infty/g, ' ∞ ');
 
-  // 5. Greek letters
+  // 5. Greek letters & functions
+  s = s.replace(/\\(sin|cos|tan|cot|sec|csc|ln|log|exp|lim|det)\b/g, '$1');
   s = s.replace(/\\theta/g, 'θ').replace(/\\Theta/g, 'Θ');
   s = s.replace(/\\omega/g, 'ω').replace(/\\Omega/g, 'Ω');
   s = s.replace(/\\alpha/g, 'α').replace(/\\beta/g, 'β');
@@ -196,6 +201,7 @@ export function cleanMathAndTypography(raw: string): string {
     const map: Record<string, string> = { '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','n':'ⁿ' };
     return map[c] || `^${c}`;
   });
+  s = s.replace(/\^\{([^{}]+)\}/g, (_m, inner) => inner.length === 1 ? `^${inner}` : `^(${inner})`);
 
   // 9. Subscripts
   s = s.replace(/_\{([a-zA-Z0-9]+)\}/g, (_m, p) => {
@@ -207,6 +213,7 @@ export function cleanMathAndTypography(raw: string): string {
     const subMap: Record<string, string> = { '0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉' };
     return subMap[c] || `_${c}`;
   });
+  s = s.replace(/_\{([^{}]+)\}/g, (_m, inner) => `_${inner}`);
 
   // 10. Standard math functions
   s = s.replace(/\\(sin|cos|tan|cot|sec|csc|ln|log|exp|lim)\b/g, '$1');

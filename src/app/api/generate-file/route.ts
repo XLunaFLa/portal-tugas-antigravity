@@ -161,15 +161,8 @@ function parseMarkdown(rawContent: string): Block[] {
       continue;
     }
 
-    // 7. Formula / Mathematical derivation line
-    const isFormula = (
-      t.length < 85 &&
-      t.includes('=') &&
-      !/(adalah|karena|dengan|sehingga|maka|bahwa|pada|untuk|terletak|berdasarkan)/i.test(t) &&
-      /[0-9+\-*\/²³½¼√θωαβπ∂()]/i.test(t)
-    );
-    if (isFormula) {
-      blocks.push({ type: 'formula', content: t });
+    // 7. Divider / Horizontal rule (---, ***, ___)
+    if (/^[-*_]{3,}$/.test(t)) {
       i++;
       continue;
     }
@@ -182,7 +175,15 @@ function parseMarkdown(rawContent: string): Block[] {
       continue;
     }
 
-    // 9. Numbered list items: 1. item or 1) item
+    // 9. Lettered sub-items: a. item or b) item
+    const sm = t.match(/^([a-zA-Z])[\.\)]\s+(.+)/);
+    if (sm) {
+      blocks.push({ type: 'bullet', content: `**${sm[1]}.** ${sm[2]}` });
+      i++;
+      continue;
+    }
+
+    // 10. Numbered list items: 1. item or 1) item
     const nm = t.match(/^(\d+)[\.\)]\s+(.+)/);
     if (nm) {
       blocks.push({ type: 'numbered', content: nm[2], num: parseInt(nm[1], 10) });
@@ -190,7 +191,20 @@ function parseMarkdown(rawContent: string): Block[] {
       continue;
     }
 
-    // 10. Standard paragraph
+    // 11. Formula / Mathematical derivation line
+    const isFormula = (
+      t.length < 85 &&
+      t.includes('=') &&
+      !/(adalah|karena|dengan|sehingga|maka|bahwa|pada|untuk|terletak|berdasarkan)/i.test(t) &&
+      /[0-9+\-*\/²³½¼√θωαβπ∂()]/i.test(t)
+    );
+    if (isFormula) {
+      blocks.push({ type: 'formula', content: t });
+      i++;
+      continue;
+    }
+
+    // 12. Standard paragraph
     blocks.push({ type: 'paragraph', content: t });
     i++;
   }
