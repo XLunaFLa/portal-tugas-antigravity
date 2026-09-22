@@ -143,8 +143,31 @@ export async function ask9Router(
         throw new Error(`9Router [${targetModel}] error ${response.status}: ${errorBody}`);
       }
 
-      const result = await response.json();
-      const answer = result.choices?.[0]?.message?.content;
+      const rawText = await response.text();
+      let answer = '';
+
+      if (rawText.includes('data: ')) {
+        const lines = rawText.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('data: ') && !trimmed.includes('[DONE]')) {
+            try {
+              const parsed = JSON.parse(trimmed.slice(6));
+              const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || '';
+              answer += delta;
+            } catch {
+              // ignore malformed line
+            }
+          }
+        }
+      } else {
+        try {
+          const result = JSON.parse(rawText);
+          answer = result.choices?.[0]?.message?.content || '';
+        } catch {
+          // ignore
+        }
+      }
 
       if (!answer) {
         throw new Error(`9Router [${targetModel}] mengembalikan respons kosong.`);
@@ -164,17 +187,18 @@ export async function ask9Router(
 export async function askGemini(
   promptText: string, 
   images: ImagePart[] = [], 
-  preferredModel = 'gemini-3.8-flash'
+  preferredModel = 'gemini-3.5-flash-lite'
 ): Promise<string> {
   if (!GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY belum dikonfigurasi.');
   }
 
   const modelsToTry = [
-    'gemini-3.5-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-3-flash-preview',
     preferredModel, 
-    'gemini-3.6-flash', 
-    'gemini-3.7-flash',
+    'gemini-3.5-flash',
     'gemini-3.8-flash'
   ];
   const uniqueModels = Array.from(new Set(modelsToTry));
