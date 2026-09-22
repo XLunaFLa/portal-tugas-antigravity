@@ -23,11 +23,11 @@ Pedoman Menjawab Soal Diskusi / Esai:
 4. Jaga agar bahasa tetap baku, akademis, dan sopan dalam bahasa Indonesia yang baik dan benar.
 `;
 
-// 1. Solver via 9Router (Default: ag/claude-sonnet-4-6 or ag/gemini-3.8-flash-high)
+// 1. Solver via 9Router (Default: ag/gemini-3.8-flash-high for vision or ag/claude-sonnet-4-6 for text)
 export async function ask9Router(
   promptText: string, 
   images: ImagePart[] = [], 
-  model = 'ag/claude-sonnet-4-6'
+  model = 'ag/gemini-3.8-flash-high'
 ): Promise<string> {
   const contentParts: any[] = [];
 
@@ -41,19 +41,28 @@ export async function ask9Router(
     contentParts.push({
       type: 'image_url',
       image_url: {
-        url: `data:${img.mimeType};base64,{img.data}`.replace('{img.data}', img.data),
+        url: `data:${img.mimeType};base64,${img.data}`,
       },
     });
   }
 
   // Model fallback order inside 9Router
-  const modelsToTry = [
-    model,
-    'ag/claude-sonnet-4-6',
-    'ag/gemini-3.8-flash-high',
-    'ag/claude-opus-4-6-thinking',
-    'ag/gemini-3.6-flash-high',
-  ];
+  // Antigravity OAuth requires Gemini models for Multimodal Vision (Claude models in Antigravity are text-only)
+  const modelsToTry = images.length > 0
+    ? [
+        model.includes('claude') ? 'ag/gemini-3.8-flash-high' : model,
+        'ag/gemini-3.8-flash-high',
+        'ag/gemini-3.7-flash-high',
+        'ag/gemini-pro-agent',
+        'ag/gemini-3.6-flash-high',
+      ]
+    : [
+        model,
+        'ag/claude-sonnet-4-6',
+        'ag/gemini-3.8-flash-high',
+        'ag/claude-opus-4-6-thinking',
+        'ag/gemini-3.6-flash-high',
+      ];
   const uniqueModels = Array.from(new Set(modelsToTry));
 
   let lastError: any = null;
@@ -186,13 +195,16 @@ export async function solveWithDualEngine(
   promptText: string,
   images: ImagePart[] = [],
   engineChoice = 'auto', // 'auto' | '9router' | 'gemini'
-  modelChoice = 'ag/claude-sonnet-4-6'
+  modelChoice = 'ag/gemini-3.8-flash-high'
 ): Promise<{ answer: string; usedEngine: string }> {
   // If user chose 9Router or Auto:
   if (engineChoice === '9router' || engineChoice === 'auto') {
     try {
-      const answer = await ask9Router(promptText, images, modelChoice);
-      const cleanModelName = modelChoice.replace('ag/', '').toUpperCase();
+      const effectiveModel = (images.length > 0 && modelChoice.includes('claude'))
+        ? 'ag/gemini-3.8-flash-high'
+        : modelChoice;
+      const answer = await ask9Router(promptText, images, effectiveModel);
+      const cleanModelName = effectiveModel.replace('ag/', '').toUpperCase();
       return { answer, usedEngine: `9Router [${cleanModelName}] (10 Akun Antigravity)` };
     } catch (err: any) {
       console.warn('9Router failed or unreachable, falling back to Google Cloud Direct...', err.message);

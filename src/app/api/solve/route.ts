@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       images = [], 
       type = 'kuis', 
       engine = 'auto', 
-      model = 'ag/claude-sonnet-4-6' 
+      model = 'ag/gemini-3.8-flash-high' 
     } = body;
 
     if (!prompt_text && (!images || images.length === 0)) {

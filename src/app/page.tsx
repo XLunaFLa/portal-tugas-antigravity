@@ -51,7 +51,7 @@ export default function Home() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [engineChoice, setEngineChoice] = useState<'auto' | '9router' | 'gemini'>('auto');
-  const [selectedModel, setSelectedModel] = useState('ag/claude-sonnet-4-6');
+  const [selectedModel, setSelectedModel] = useState('ag/gemini-3.8-flash-high');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -227,10 +227,11 @@ export default function Home() {
             className="text-xs bg-slate-900/90 border border-slate-700 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer font-medium"
             title="Pilih Model AI Tertinggi"
           >
-            <option value="ag/claude-sonnet-4-6">👑 Claude Sonnet 4.6 (Default)</option>
-            <option value="ag/gemini-3.8-flash-high">⚡ Gemini 3.8 Flash HIGH</option>
-            <option value="ag/claude-opus-4-6-thinking">🧠 Claude Opus 4.6 Thinking</option>
+            <option value="ag/gemini-3.8-flash-high">⚡ Gemini 3.8 Flash HIGH (Multimodal Vision)</option>
+            <option value="ag/claude-sonnet-4-6">👑 Claude Sonnet 4.6 (Esai & Diskusi)</option>
             <option value="ag/gemini-3.7-flash-high">🔥 Gemini 3.7 Flash HIGH</option>
+            <option value="ag/claude-opus-4-6-thinking">🧠 Claude Opus 4.6 Thinking (Esai & Diskusi)</option>
+            <option value="ag/gemini-pro-agent">💎 Gemini Pro Agent (Vision & Penalaran)</option>
             <option value="ag/gemini-3.6-flash-high">🚀 Gemini 3.6 Flash HIGH</option>
             <option value="ag/gpt-oss-120b-medium">🤖 GPT-OSS 120B</option>
           </select>
