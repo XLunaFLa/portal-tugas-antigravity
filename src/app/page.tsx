@@ -84,6 +84,54 @@ export default function Home() {
     }
   };
 
+  const handleDeleteHistory = async (id: string) => {
+    if (!confirm('Apakah kamu yakin ingin menghapus riwayat tugas ini?')) {
+      return;
+    }
+
+    setHistory((prev) => prev.filter((item) => item.id !== id));
+
+    try {
+      const res = await fetch('/api/history', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal menghapus riwayat.');
+      }
+    } catch (err: any) {
+      alert(`Gagal menghapus: ${err.message}`);
+      fetchHistory();
+    }
+  };
+
+  const handleClearAllHistory = async () => {
+    if (!confirm('Apakah kamu yakin ingin menghapus SELURUH riwayat tugas secara permanen?')) {
+      return;
+    }
+
+    setHistory([]);
+
+    try {
+      const res = await fetch('/api/history', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal membersihkan riwayat.');
+      }
+    } catch (err: any) {
+      alert(`Gagal menghapus: ${err.message}`);
+      fetchHistory();
+    }
+  };
+
   // Smart Clipboard Paste (Ctrl+V) listener
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
@@ -615,6 +663,17 @@ export default function Home() {
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
+                {history.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAllHistory}
+                    title="Hapus semua riwayat"
+                    className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 text-xs flex items-center gap-1 transition"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline text-[11px] font-medium">Hapus Semua</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={fetchHistory}
@@ -662,20 +721,33 @@ export default function Home() {
                         resultRef.current?.scrollIntoView({ behavior: 'smooth' });
                       }, 100);
                     }}
-                    className="p-3.5 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 hover:border-slate-700 transition cursor-pointer flex flex-col gap-1.5 group"
+                    className="p-3.5 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 hover:border-slate-700 transition cursor-pointer flex flex-col gap-1.5 group relative"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
                         {item.type || 'Tugas'}
                       </span>
-                      <span className="text-[11px] text-slate-400">
-                        {new Date(item.created_at).toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] text-slate-400">
+                          {new Date(item.created_at).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteHistory(item.id);
+                          }}
+                          title="Hapus riwayat ini"
+                          className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                     <p className="text-xs font-semibold text-slate-200 line-clamp-2 group-hover:text-blue-300 transition">
                       {item.title || item.prompt_text || 'Tugas Kuliah'}

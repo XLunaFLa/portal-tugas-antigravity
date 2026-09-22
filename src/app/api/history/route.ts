@@ -45,3 +45,47 @@ export async function GET() {
     );
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const body = await req.json();
+    const { id, all } = body;
+
+    if (all) {
+      const { error } = await supabaseAdmin
+        .from('tugas_records')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return NextResponse.json({ success: true, message: 'Semua riwayat tugas berhasil dihapus.' });
+    }
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID riwayat diperlukan untuk menghapus.' },
+        { status: 400 }
+      );
+    }
+
+    const { error } = await supabaseAdmin
+      .from('tugas_records')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return NextResponse.json({ success: true, message: 'Riwayat tugas berhasil dihapus.' });
+  } catch (error: any) {
+    console.error('Delete history error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Gagal menghapus riwayat.' },
+      { status: 500 }
+    );
+  }
+}
