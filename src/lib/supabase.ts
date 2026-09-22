@@ -5,13 +5,20 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey;
 
 // Client for public / browser usage
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: {
+    fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }),
+  },
+});
 
 // Admin client for backend API routes (bypasses RLS)
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
+  },
+  global: {
+    fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }),
   },
 });
 

@@ -16,7 +16,8 @@ import {
   Loader2,
   X,
   Cpu,
-  ShieldCheck
+  ShieldCheck,
+  RefreshCw
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -60,19 +61,26 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   useEffect(() => {
     fetchHistory();
   }, []);
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch('/api/history');
+      setHistoryLoading(true);
+      const res = await fetch(`/api/history?t=${Date.now()}`, {
+        cache: 'no-store',
+      });
       const data = await res.json();
-      if (data.success && data.history) {
+      if (data.success && Array.isArray(data.history)) {
         setHistory(data.history);
       }
     } catch (e) {
       console.warn('Failed to load history:', e);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -261,7 +269,10 @@ export default function Home() {
 
           {/* History Button */}
           <button
-            onClick={() => setShowHistory(!showHistory)}
+            onClick={() => {
+              setShowHistory(true);
+              fetchHistory();
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition text-slate-200"
           >
             <Clock className="w-3.5 h-3.5 text-blue-400" />
@@ -599,13 +610,28 @@ export default function Home() {
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-blue-400" />
                 <h3 className="font-bold text-base text-white">Riwayat Tugas</h3>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+                  {history.length}
+                </span>
               </div>
-              <button
-                onClick={() => setShowHistory(false)}
-                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={fetchHistory}
+                  disabled={historyLoading}
+                  title="Segarkan riwayat"
+                  className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-blue-400 transition"
+                >
+                  <RefreshCw className={`w-4 h-4 ${historyLoading ? 'animate-spin text-blue-400' : ''}`} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowHistory(false)}
+                  className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {history.length === 0 ? (
