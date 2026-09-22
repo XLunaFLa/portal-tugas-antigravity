@@ -9,14 +9,13 @@ import {
   Check, 
   Trash2, 
   Clock, 
-  Sparkles, 
+  BookOpen,
   Image as ImageIcon,
   ChevronRight,
   ExternalLink,
   Loader2,
   X,
   Cpu,
-  ShieldCheck,
   RefreshCw,
   FileDown,
   FolderUp,
@@ -405,12 +404,13 @@ export default function Home() {
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleFileDownload = async () => {
-    if (!answer || !requestedFileType) return;
-    const fname = customFilename.trim() || 'Jawaban_Tugas';
+  const handleFileDownload = async (typeToDownload?: FileType) => {
+    const targetType = typeToDownload || requestedFileType || 'docx';
+    if (!answer) return;
+    const fname = customFilename.trim() || 'Naskah_Tugas_Akademik';
     setFileDownloading(true);
     try {
-      switch (requestedFileType) {
+      switch (targetType) {
         case 'docx': await downloadAsWord(answer, fname); break;
         case 'xlsx': await downloadAsExcel(answer, fname); break;
         case 'pptx': await downloadAsPptx(answer, fname); break;
@@ -424,55 +424,54 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col">
-      {/* Top Navbar */}
-      {/* Top Navbar */}
-      <header className="border-b border-slate-800 bg-[#0d1322]/90 backdrop-blur sticky top-0 z-30 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
-          {/* Logo & Brand */}
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
-              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+    <div className="min-h-screen bg-[#080b11] text-slate-100 flex flex-col font-sans selection:bg-slate-700 selection:text-white">
+      {/* Top Navbar — Restrained, dignified, craftsmanship */}
+      <header className="border-b border-white/[0.08] bg-[#0c1017]/90 backdrop-blur-md sticky top-0 z-30 px-3 sm:px-6 py-2.5 sm:py-3">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+          {/* Brand Mark & Title */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-slate-800/90 border border-slate-700/80 flex items-center justify-center text-slate-200 shadow-sm shrink-0">
+              <BookOpen className="w-4 h-4 text-slate-200" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-sm sm:text-base lg:text-lg font-bold tracking-tight text-white flex items-center gap-1.5 truncate">
-                <span>Portal Tugas</span>
-                <span className="text-[10px] sm:text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hidden sm:inline-flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3" /> 9Router + Cloud
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm sm:text-base font-semibold tracking-tight text-white truncate">
+                  Portal Tugas
+                </h1>
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700/60 hidden sm:inline-flex items-center">
+                  Academic Studio
                 </span>
-              </h1>
+              </div>
               <p className="text-[11px] text-slate-400 hidden md:block truncate">
-                Auto-Solver Kuis Gambar & Diskusi Forum Kuliah (10 Akun Antigravity OAuth)
+                Workbench pengerjaan soal, analisis esai, dan tugas mandiri bebas AI-slop
               </p>
             </div>
           </div>
 
-          {/* Desktop / Tablet Selectors */}
+          {/* Desktop Selectors & Actions */}
           <div className="hidden sm:flex items-center gap-2 shrink-0">
             <select
               value={engineChoice}
               onChange={(e: any) => setEngineChoice(e.target.value)}
-              className="text-xs bg-slate-900/90 border border-slate-700 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer"
-              title="Pilih Engine AI"
+              className="text-xs bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-slate-500 cursor-pointer font-medium"
+              title="Pilih Engine Eksekusi"
             >
-              <option value="auto">⚡ Auto Engine</option>
-              <option value="9router">🚀 9Router Lokal</option>
-              <option value="gemini">☁️ Google Cloud Direct</option>
+              <option value="auto">Auto Router</option>
+              <option value="9router">9Router Daemon</option>
+              <option value="gemini">Cloud Direct</option>
             </select>
 
             <select
               value={selectedModel}
               onChange={(e: any) => setSelectedModel(e.target.value)}
-              className="text-xs max-w-[200px] lg:max-w-none bg-slate-900/90 border border-slate-700 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer font-medium truncate"
-              title="Pilih Model AI Tertinggi"
+              className="text-xs max-w-[210px] lg:max-w-none bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-slate-500 cursor-pointer font-medium truncate"
+              title="Model Penalaran"
             >
-              <option value="ag/gemini-3.8-flash-high">⚡ Gemini 3.8 Flash HIGH (Vision)</option>
-              <option value="ag/claude-sonnet-4-6">👑 Claude Sonnet 4.6 (Esai & Diskusi)</option>
-              <option value="ag/gemini-3.7-flash-high">🔥 Gemini 3.7 Flash HIGH</option>
-              <option value="ag/claude-opus-4-6-thinking">🧠 Claude Opus 4.6 Thinking</option>
-              <option value="ag/gemini-pro-agent">💎 Gemini Pro Agent (Vision)</option>
-              <option value="ag/gemini-3.6-flash-high">🚀 Gemini 3.6 Flash HIGH</option>
-              <option value="ag/gpt-oss-120b-medium">🤖 GPT-OSS 120B</option>
+              <option value="ag/gemini-3.8-flash-high">Gemini 3.8 Flash HIGH (Vision)</option>
+              <option value="ag/claude-sonnet-4-6">Claude Sonnet 4.6 (Esai & Skripsi)</option>
+              <option value="ag/gemini-3.7-flash-high">Gemini 3.7 Flash HIGH</option>
+              <option value="ag/claude-opus-4-6-thinking">Claude Opus 4.6 Thinking</option>
+              <option value="ag/gemini-pro-agent">Gemini Pro Agent (Vision)</option>
             </select>
 
             <button
@@ -480,14 +479,14 @@ export default function Home() {
                 setShowHistory(true);
                 fetchHistory();
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition text-slate-200 shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700/80 border border-slate-700 rounded-lg transition text-slate-200 shrink-0"
             >
-              <Clock className="w-3.5 h-3.5 text-blue-400" />
-              <span>Riwayat ({history.length})</span>
+              <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <span>Arsip ({history.length})</span>
             </button>
           </div>
 
-          {/* Mobile Right: Riwayat Button */}
+          {/* Mobile Right */}
           <div className="flex sm:hidden items-center gap-1.5 shrink-0">
             <button
               onClick={() => {
@@ -496,22 +495,22 @@ export default function Home() {
               }}
               className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-200"
             >
-              <Clock className="w-3.5 h-3.5 text-blue-400" />
-              <span>Riwayat ({history.length})</span>
+              <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <span>Arsip ({history.length})</span>
             </button>
           </div>
         </div>
 
-        {/* Mobile Secondary Bar for Engine & Model */}
+        {/* Mobile Secondary Bar */}
         <div className="sm:hidden grid grid-cols-2 gap-1.5 pt-2 mt-2 border-t border-slate-800/80">
           <select
             value={engineChoice}
             onChange={(e: any) => setEngineChoice(e.target.value)}
             className="text-[11px] bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none"
           >
-            <option value="auto">⚡ Auto Engine</option>
-            <option value="9router">🚀 9Router Lokal</option>
-            <option value="gemini">☁️ Cloud Direct</option>
+            <option value="auto">Auto Router</option>
+            <option value="9router">9Router Daemon</option>
+            <option value="gemini">Cloud Direct</option>
           </select>
 
           <select
@@ -519,65 +518,57 @@ export default function Home() {
             onChange={(e: any) => setSelectedModel(e.target.value)}
             className="text-[11px] bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none truncate font-medium"
           >
-            <option value="ag/gemini-3.8-flash-high">⚡ Gemini 3.8 (Vision)</option>
-            <option value="ag/claude-sonnet-4-6">👑 Claude 4.6 (Esai)</option>
-            <option value="ag/gemini-3.7-flash-high">🔥 Gemini 3.7</option>
-            <option value="ag/claude-opus-4-6-thinking">🧠 Claude Opus</option>
-            <option value="ag/gemini-pro-agent">💎 Gemini Pro</option>
-            <option value="ag/gemini-3.6-flash-high">🚀 Gemini 3.6</option>
+            <option value="ag/gemini-3.8-flash-high">Gemini 3.8 (Vision)</option>
+            <option value="ag/claude-sonnet-4-6">Claude 4.6 (Esai)</option>
+            <option value="ag/gemini-3.7-flash-high">Gemini 3.7</option>
+            <option value="ag/claude-opus-4-6-thinking">Claude Opus</option>
           </select>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 flex flex-col gap-4 sm:gap-6">
-        {/* Banner / Info Card */}
-        <div className="bg-gradient-to-r from-blue-950/40 via-indigo-950/30 to-slate-900/40 border border-blue-900/30 rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-3 text-xs text-slate-300">
-          <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 text-sm">
-              💡
-            </div>
-            <div className="leading-snug">
-              <span className="hidden sm:inline">
-                <strong>Tips Cepat Laptop:</strong> Screenshot soal kuis (<kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200">Win+Shift+S</kbd>), lalu langsung tekan <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200">Ctrl + V</kbd> di halaman ini!
-              </span>
-              <span className="sm:hidden text-[11px]">
-                <strong>Tips HP / Tablet:</strong> Ketuk kotak upload di bawah untuk mengambil foto langsung atau pilih screenshot soal dari galeri HP kamu!
-              </span>
-            </div>
+      <main className="flex-1 max-w-4xl w-full mx-auto px-3 sm:px-6 py-5 sm:py-7 flex flex-col gap-4 sm:gap-6">
+        {/* Subtle Ambient Utility Bar */}
+        <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500/80 inline-block" />
+            <span className="font-medium text-slate-300">Siap Menganalisis</span>
+            <span className="text-slate-500 hidden sm:inline">•</span>
+            <span className="text-slate-400 hidden sm:inline">Bebas AI-Slop & Didasarkan Referensi Valid</span>
           </div>
+          <span className="text-[11px] text-slate-500 hidden sm:inline">
+            Tempel gambar via <kbd className="px-1 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300 font-mono text-[10px]">Ctrl+V</kbd>
+          </span>
         </div>
 
-        {/* Mode Selector Tabs */}
-        <div className="grid grid-cols-2 sm:flex sm:w-fit w-full gap-1.5 bg-slate-900/80 p-1.5 rounded-xl border border-slate-800">
+        {/* Studio Segmented Control */}
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-900/90 border border-slate-800 w-full sm:w-fit">
           <button
             onClick={() => setActiveTab('kuis')}
-            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-center ${
+            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
               activeTab === 'kuis'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                ? 'bg-slate-800 text-white shadow-sm border border-slate-700/80'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Camera className="w-4 h-4 shrink-0" />
-            <span className="truncate">Kuis Gambar</span>
-            <span className="hidden md:inline">(Screenshot)</span>
+            <Camera className="w-3.5 h-3.5" />
+            <span>Kuis & Pilihan Ganda</span>
           </button>
           <button
             onClick={() => setActiveTab('diskusi')}
-            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-center ${
+            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
               activeTab === 'diskusi'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                ? 'bg-slate-800 text-white shadow-sm border border-slate-700/80'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <FileText className="w-4 h-4 shrink-0" />
-            <span className="truncate">Tugas Esai</span>
-            <span className="hidden md:inline">/ Diskusi</span>
+            <FileText className="w-3.5 h-3.5" />
+            <span>Esai, Diskusi & Skripsi</span>
           </button>
         </div>
 
-        {/* Input Card */}
-        <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col gap-4">
+        {/* Universal Input Card */}
+        <div className="bg-[#0e131e] border border-white/[0.07] rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col gap-4">
           {/* Tab 1: Kuis / Tugas Universal */}
           {activeTab === 'kuis' && (
             <div className="flex flex-col gap-3">
@@ -589,7 +580,7 @@ export default function Home() {
                   e.preventDefault();
                   if (e.dataTransfer.files) handleFileUpload(e.dataTransfer.files);
                 }}
-                className="hidden sm:flex border-2 border-dashed border-slate-700 hover:border-blue-500/60 bg-slate-900/50 hover:bg-slate-900/90 transition rounded-xl p-8 flex-col items-center justify-center gap-2.5 cursor-pointer text-center group"
+                className="hidden sm:flex border border-dashed border-slate-700/80 hover:border-slate-500 bg-slate-950/40 hover:bg-slate-950/70 transition-all duration-200 rounded-xl p-7 flex-col items-center justify-center gap-2 cursor-pointer text-center group"
               >
                 <input
                   ref={fileInputRef}
@@ -602,22 +593,21 @@ export default function Home() {
                     if (fileInputRef.current) fileInputRef.current.value = '';
                   }}
                 />
-                <div className="w-12 h-12 rounded-full bg-blue-500/10 group-hover:bg-blue-500/20 text-blue-400 flex items-center justify-center transition">
-                  <FolderUp className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300 flex items-center justify-center group-hover:scale-105 transition">
+                  <FolderUp className="w-5 h-5 text-slate-300" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-200">
-                    Tarik & Lepas File Tugas ke Sini atau Klik untuk Memilih
+                  <p className="text-xs sm:text-sm font-medium text-slate-200">
+                    Seret berkas tugas atau <span className="text-blue-400 hover:underline">pilih dari komputer</span>
                   </p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Mendukung SEMUA format: PDF, Word (.docx), Excel (.xlsx), Foto/Screenshot, Text, dll.
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Mendukung PDF, Word (.docx), Excel (.xlsx), Foto/Screenshot, dan Teks
                   </p>
                 </div>
               </div>
 
               {/* Mobile: Three touch buttons — Camera, Gallery, and File/Doc */}
-              <div className="sm:hidden flex flex-col gap-3">
-                {/* Hidden inputs for mobile */}
+              <div className="sm:hidden flex flex-col gap-2.5">
                 <input
                   ref={cameraInputRef}
                   type="file"
@@ -653,60 +643,42 @@ export default function Home() {
                 />
 
                 <div className="grid grid-cols-3 gap-2">
-                  {/* Camera button */}
                   <button
                     type="button"
                     onClick={() => cameraInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-blue-700/60 bg-blue-950/30 active:bg-blue-900/50 transition rounded-xl py-4 px-1.5 cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center gap-1.5 border border-slate-800 bg-slate-900/90 active:bg-slate-800 transition rounded-xl py-3.5 px-1 cursor-pointer text-center"
                   >
-                    <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
-                      <Camera className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-blue-300">📷 Kamera</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Foto soal</p>
-                    </div>
+                    <Camera className="w-4 h-4 text-slate-300" />
+                    <span className="text-[11px] font-medium text-slate-300">Foto Soal</span>
                   </button>
 
-                  {/* Gallery button */}
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-slate-700 bg-slate-900/50 active:bg-slate-800/80 transition rounded-xl py-4 px-1.5 cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center gap-1.5 border border-slate-800 bg-slate-900/90 active:bg-slate-800 transition rounded-xl py-3.5 px-1 cursor-pointer text-center"
                   >
-                    <div className="w-10 h-10 rounded-full bg-slate-700/50 text-slate-300 flex items-center justify-center">
-                      <ImageIcon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-200">🖼️ Galeri</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Screenshot</p>
-                    </div>
+                    <ImageIcon className="w-4 h-4 text-slate-300" />
+                    <span className="text-[11px] font-medium text-slate-300">Galeri Foto</span>
                   </button>
 
-                  {/* Document / File button */}
                   <button
                     type="button"
                     onClick={() => docInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-emerald-700/60 bg-emerald-950/30 active:bg-emerald-900/50 transition rounded-xl py-4 px-1.5 cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center gap-1.5 border border-slate-800 bg-slate-900/90 active:bg-slate-800 transition rounded-xl py-3.5 px-1 cursor-pointer text-center"
                   >
-                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                      <FolderUp className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-emerald-300">📁 File</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">PDF/Word</p>
-                    </div>
+                    <FolderUp className="w-4 h-4 text-slate-300" />
+                    <span className="text-[11px] font-medium text-slate-300">File Dokumen</span>
                   </button>
                 </div>
               </div>
 
               {/* Uploaded Images Thumbnails */}
               {images.length > 0 && (
-                <div className="flex flex-wrap gap-3 pt-2">
+                <div className="flex flex-wrap gap-2.5 pt-1">
                   {images.map((img, idx) => (
                     <div
                       key={img.id}
-                      className="relative group w-28 h-28 rounded-xl overflow-hidden border border-slate-700 bg-slate-900 shadow-md"
+                      className="relative group w-24 h-24 rounded-xl overflow-hidden border border-slate-700/80 bg-slate-950 shadow-sm"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -717,13 +689,13 @@ export default function Home() {
                       <button
                         type="button"
                         onClick={() => removeImage(img.id)}
-                        className="absolute top-1 right-1 p-1 rounded-full bg-red-600/80 hover:bg-red-600 text-white shadow transition"
+                        className="absolute top-1 right-1 p-1 rounded-full bg-slate-950/80 hover:bg-red-600 text-white shadow transition"
                         title="Hapus gambar"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="w-3 h-3" />
                       </button>
-                      <span className="absolute bottom-1 left-1 text-[10px] font-semibold bg-black/60 px-1.5 py-0.5 rounded text-white backdrop-blur">
-                        Gambar #{idx + 1}
+                      <span className="absolute bottom-1 left-1 text-[9px] font-medium bg-black/70 px-1.5 py-0.5 rounded text-slate-200 backdrop-blur">
+                        #{idx + 1}
                       </span>
                     </div>
                   ))}
@@ -732,29 +704,29 @@ export default function Home() {
 
               {/* Uploaded Documents List */}
               {documents.length > 0 && (
-                <div className="flex flex-col gap-2 pt-1">
-                  <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                    <FolderUp className="w-3.5 h-3.5 text-blue-400" />
-                    <span>Dokumen Tugas Terlampir ({documents.length}):</span>
+                <div className="flex flex-col gap-1.5 pt-1">
+                  <span className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                    <FolderUp className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Berkas Dilampirkan ({documents.length}):</span>
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {documents.map((doc) => (
                       <div
                         key={doc.id}
-                        className="flex items-center justify-between p-3 rounded-xl bg-slate-900/90 border border-slate-700/80 gap-3 shadow-sm"
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 gap-2.5 shadow-sm"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 text-base">
+                          <div className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center shrink-0 text-sm">
                             {doc.fileType === 'pdf' ? '📕' : doc.fileType.includes('xls') ? '📊' : doc.fileType.includes('doc') ? '📄' : '📝'}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-slate-200 truncate" title={doc.fileName}>
+                            <p className="text-xs font-medium text-slate-200 truncate" title={doc.fileName}>
                               {doc.fileName}
                             </p>
                             <p className="text-[10px] text-slate-400 mt-0.5">
                               {doc.loading ? (
                                 <span className="text-blue-400 flex items-center gap-1">
-                                  <Loader2 className="w-3 h-3 animate-spin" /> Membaca isi file...
+                                  <Loader2 className="w-3 h-3 animate-spin" /> Membaca isi berkas...
                                 </span>
                               ) : doc.error ? (
                                 <span className="text-red-400 truncate">{doc.error}</span>
@@ -767,10 +739,10 @@ export default function Home() {
                         <button
                           type="button"
                           onClick={() => removeDocument(doc.id)}
-                          className="p-1 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition shrink-0"
-                          title="Hapus dokumen"
+                          className="p-1 rounded-lg text-slate-500 hover:text-red-400 transition shrink-0"
+                          title="Hapus berkas"
                         >
-                          <X className="w-4 h-4" />
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ))}
@@ -778,17 +750,17 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Textarea for Kuis tab — allows multiline with Enter! */}
+              {/* Textarea for Kuis tab */}
               <div className="mt-1">
-                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                <label className="text-xs font-medium text-slate-300 block mb-1.5">
                   Ketik / Tempel Soal, Catatan Modul, atau Instruksi Pengerjaan:
                 </label>
                 <textarea
                   rows={3}
                   value={promptText}
                   onChange={(e) => setPromptText(e.target.value)}
-                  placeholder="Ketik soal di sini (tekan Enter untuk baris baru), sebutkan modul (misal: EKMA4216), atau instruksi tugas..."
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition resize-y font-sans leading-relaxed"
+                  placeholder="Ketik soal di sini (tekan Enter untuk baris baru), instruksi dosen, atau catatan modul..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-slate-600 transition resize-y font-sans leading-relaxed"
                 />
               </div>
             </div>
@@ -797,23 +769,23 @@ export default function Home() {
           {/* Tab 2: Tugas Diskusi / Esai */}
           {activeTab === 'diskusi' && (
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-slate-300">
-                Tempelkan Soal Diskusi atau Kasus Kuliah di sini:
+              <label className="text-xs font-medium text-slate-300">
+                Tempelkan Soal Diskusi, Studi Kasus, atau Pertanyaan Akademik:
               </label>
               <textarea
                 rows={7}
                 value={promptText}
                 onChange={(e) => setPromptText(e.target.value)}
-                placeholder="Contoh: Jelaskan pendapat Saudara mengenai lima bidang utama pengambilan keputusan dalam rantai pasokan menurut modul SCM... (Tekan Enter untuk baris baru)"
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition resize-y font-sans leading-relaxed"
+                placeholder="Tempel soal diskusi atau kasus kuliah di sini... Tekan Enter bebas untuk baris baru."
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-slate-600 transition resize-y font-sans leading-relaxed"
               />
             </div>
           )}
 
           {/* Action Row */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-slate-800">
-            <span className="text-[11px] text-slate-400 hidden sm:inline-block">
-              Tekan <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200">Ctrl + Enter</kbd> untuk langsung jawab
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
+            <span className="text-[11px] text-slate-500 hidden sm:inline-block">
+              Pintasan keyboard: <kbd className="px-1.5 py-0.5 bg-slate-800/80 border border-slate-700/80 rounded text-slate-300 text-[10px]">Ctrl + Enter</kbd>
             </span>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -825,7 +797,7 @@ export default function Home() {
                     setDocuments([]);
                     setPromptText('');
                   }}
-                  className="px-3.5 py-2.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-400 hover:text-slate-200 transition shrink-0"
+                  className="px-3.5 py-2.5 rounded-xl border border-slate-800 hover:bg-slate-800 text-xs font-medium text-slate-400 hover:text-slate-200 transition shrink-0"
                 >
                   Reset
                 </button>
@@ -835,7 +807,7 @@ export default function Home() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading || (images.length === 0 && documents.length === 0 && !promptText.trim())}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold px-6 py-3 sm:py-2.5 rounded-xl shadow-lg shadow-blue-600/25 transition duration-200"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold px-6 py-2.5 rounded-xl shadow transition duration-150"
               >
                 {loading ? (
                   <>
@@ -844,8 +816,8 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    <Send className="w-4 h-4" />
-                    <span>Dapatkan Jawaban</span>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Kerjakan Tugas</span>
                   </>
                 )}
               </button>
@@ -855,105 +827,125 @@ export default function Home() {
 
         {/* Loading Indicator */}
         {loading && (
-          <div className="p-6 sm:p-8 rounded-2xl border border-blue-500/20 bg-blue-950/20 flex flex-col items-center justify-center gap-4 text-center animate-pulse">
-            <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+          <div className="p-7 sm:p-9 rounded-2xl border border-white/[0.08] bg-[#0e131e] flex flex-col items-center justify-center gap-3 text-center">
+            <Loader2 className="w-7 h-7 text-slate-300 animate-spin" />
             <div>
-              <p className="text-sm font-semibold text-blue-300">{loadingStatus}</p>
-              <p className="text-xs text-slate-400 mt-1">Memeriksa literatur modul & menyusun format mahasiswa UT...</p>
+              <p className="text-sm font-medium text-white">{loadingStatus}</p>
+              <p className="text-xs text-slate-500 mt-1">Mengkaji literatur rujukan & menyusun narasi akademik bebas AI-slop...</p>
             </div>
-
-            {submittedPrompt && (submittedPrompt.images.length > 0 || submittedPrompt.text) && (
-              <div className="max-w-md w-full bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col items-center gap-2">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Soal yang Sedang Dianalisis:</span>
-                {submittedPrompt.images.length > 0 && (
-                  <div className="flex gap-2 justify-center flex-wrap">
-                    {submittedPrompt.images.map((img, i) => (
-                      <img
-                        key={img.id || i}
-                        src={img.previewUrl}
-                        alt={`Soal ${i + 1}`}
-                        className="max-h-24 object-contain rounded-lg border border-blue-500/40"
-                      />
-                    ))}
-                  </div>
-                )}
-                {submittedPrompt.text && (
-                  <p className="text-xs text-slate-300 line-clamp-2 italic text-left w-full">
-                    &quot;{submittedPrompt.text}&quot;
-                  </p>
-                )}
-              </div>
-            )}
           </div>
         )}
 
-        {/* Result Area */}
+        {/* Result Area — Academic Manuscript Dossier */}
         {answer && !loading && (
           <div
             ref={resultRef}
-            className="bg-[#0f172a] border border-blue-500/30 rounded-2xl p-5 sm:p-7 shadow-2xl flex flex-col gap-5 animate-fadeIn"
+            className="bg-[#0e131e] border border-white/[0.08] rounded-2xl p-5 sm:p-8 shadow-2xl flex flex-col gap-5 animate-fadeIn"
           >
             {/* Header of Answer Card */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">
-                  Hasil Jawaban Tugas
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-4 border-b border-slate-800/80">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <h2 className="text-sm sm:text-base font-semibold text-white tracking-tight">
+                  Naskah Hasil Analisis
                 </h2>
                 {usedEngine && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 flex items-center gap-1">
-                    <Cpu className="w-3 h-3" /> {usedEngine}
+                  <span className="text-[10px] font-mono text-slate-400 bg-slate-800/80 border border-slate-700/60 px-2 py-0.5 rounded">
+                    {usedEngine}
                   </span>
                 )}
               </div>
 
-              {/* Copy Button */}
-              <button
-                type="button"
-                onClick={handleCopy}
-                className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold shadow-lg transition duration-200 ${
-                  copied
-                    ? 'bg-emerald-600 text-white shadow-emerald-600/30'
-                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20 hover:scale-[1.02]'
-                }`}
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-4 h-4 shrink-0" />
-                    <span className="sm:hidden">Tersalin! Siap Tempel</span>
-                    <span className="hidden sm:inline">Tersalin! Tinggal Ctrl+V di WordPad</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4 shrink-0" />
-                    <span className="sm:hidden">Salin Jawaban</span>
-                    <span className="hidden sm:inline">Salin Jawaban (Siap Tempel WordPad)</span>
-                  </>
-                )}
-              </button>
+              {/* Copy & Quick Actions */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                    copied
+                      ? 'bg-emerald-950/60 border-emerald-600/50 text-emerald-300'
+                      : 'bg-slate-800/90 hover:bg-slate-800 border-slate-700 text-slate-200'
+                  }`}
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+                  <span>{copied ? 'Tersalin' : 'Salin Teks Bersih'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Integrated Export Toolbar */}
+            <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <input
+                  type="text"
+                  value={customFilename}
+                  onChange={(e) => setCustomFilename(e.target.value)}
+                  placeholder="Nama berkas unduhan (contoh: Tugas_Manajemen_Sesi4)"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600"
+                />
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleFileDownload('docx')}
+                  disabled={fileDownloading}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-900/30 hover:bg-blue-900/50 border border-blue-700/40 text-blue-200 text-xs font-medium transition"
+                  title="Unduh format Microsoft Word"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Word (.docx)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFileDownload('pdf')}
+                  disabled={fileDownloading}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-900/30 hover:bg-red-900/50 border border-red-700/40 text-red-200 text-xs font-medium transition"
+                  title="Unduh format PDF Cetak"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-red-400" />
+                  <span>PDF (.pdf)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFileDownload('xlsx')}
+                  disabled={fileDownloading}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-900/30 hover:bg-emerald-900/50 border border-emerald-700/40 text-emerald-200 text-xs font-medium transition"
+                  title="Unduh format Excel Spreadsheet"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Excel (.xlsx)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFileDownload('pptx')}
+                  disabled={fileDownloading}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-900/30 hover:bg-amber-900/50 border border-amber-700/40 text-amber-200 text-xs font-medium transition"
+                  title="Unduh format Slide PowerPoint"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Slide (.pptx)</span>
+                </button>
+              </div>
             </div>
 
             {/* Display Submitted Question/Image/Document as Prompt Card */}
             {submittedPrompt && (submittedPrompt.text || submittedPrompt.images.length > 0 || (submittedPrompt.documents && submittedPrompt.documents.length > 0)) && (
-              <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col gap-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-blue-400" />
-                    Soal / File yang Diajukan:
-                  </span>
-                </div>
+              <div className="p-3.5 rounded-xl bg-slate-950/40 border border-slate-800/80 flex flex-col gap-2">
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Berkas & Pertanyaan Rujukan:
+                </span>
 
                 {/* Submitted Documents Badges */}
                 {submittedPrompt.documents && submittedPrompt.documents.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-1">
+                  <div className="flex flex-wrap gap-2 pt-0.5">
                     {submittedPrompt.documents.map((doc, i) => (
                       <span
                         key={doc.id || i}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-200 font-medium"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-xs text-slate-300 font-medium"
                       >
                         <span>{doc.fileType === 'pdf' ? '📕' : doc.fileType.includes('xls') ? '📊' : doc.fileType.includes('doc') ? '📄' : '📝'}</span>
                         <span className="truncate max-w-[200px]">{doc.fileName}</span>
-                        <span className="text-[10px] text-emerald-400">({doc.wordCount.toLocaleString()} kata)</span>
+                        <span className="text-[10px] text-slate-500">({doc.wordCount.toLocaleString()} kata)</span>
                       </span>
                     ))}
                   </div>
@@ -961,81 +953,78 @@ export default function Home() {
 
                 {/* Submitted Images */}
                 {submittedPrompt.images.length > 0 && (
-                  <div className="flex gap-3 flex-wrap pt-1">
+                  <div className="flex gap-2.5 flex-wrap pt-0.5">
                     {submittedPrompt.images.map((img, i) => (
                       <a
                         key={img.id || i}
                         href={img.previewUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="group relative block rounded-xl overflow-hidden border border-slate-700 hover:border-blue-500 transition shadow-md bg-black/40"
-                        title="Klik untuk melihat ukuran penuh"
+                        className="group relative block rounded-lg overflow-hidden border border-slate-800 hover:border-slate-600 transition shadow bg-black/40"
+                        title="Lihat ukuran asli"
                       >
                         <img
                           src={img.previewUrl}
                           alt={`Soal #${i + 1}`}
-                          className="max-h-36 object-contain rounded p-1"
+                          className="max-h-28 object-contain rounded p-1"
                         />
-                        <span className="absolute bottom-1 right-1 bg-black/80 text-[10px] text-white px-2 py-0.5 rounded backdrop-blur opacity-0 group-hover:opacity-100 transition">
-                          🔍 Lihat Asli
-                        </span>
                       </a>
                     ))}
                   </div>
                 )}
 
                 {submittedPrompt.text && (
-                  <p className="text-xs sm:text-sm font-medium text-slate-200 whitespace-pre-wrap leading-relaxed">
+                  <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed pt-1">
                     {submittedPrompt.text}
                   </p>
                 )}
               </div>
             )}
 
-            {/* Answer Content — Rendered cleanly via ReactMarkdown without raw # and * symbols */}
-            <div className="text-slate-200 text-sm sm:text-base leading-relaxed font-sans selection:bg-blue-600 selection:text-white space-y-3">
+            {/* Answer Content — Clean Academic Typography */}
+            <div className="text-slate-200 text-sm sm:text-base leading-relaxed font-sans selection:bg-slate-700 selection:text-white space-y-3 pt-2">
               <ReactMarkdown
                 components={{
                   h1: ({ ...props }) => (
-                    <h1 className="text-lg sm:text-xl font-bold text-white mt-4 mb-2 border-b border-slate-700/60 pb-1.5 flex items-center gap-2" {...props} />
+                    <h1 className="text-lg sm:text-xl font-bold text-white mt-5 mb-2.5 border-b border-slate-800 pb-2" {...props} />
                   ),
                   h2: ({ ...props }) => (
-                    <h2 className="text-base sm:text-lg font-bold text-blue-300 mt-3 mb-1.5 flex items-center gap-2" {...props} />
+                    <h2 className="text-base sm:text-lg font-bold text-slate-100 mt-4 mb-2" {...props} />
                   ),
                   h3: ({ ...props }) => (
-                    <h3 className="text-sm sm:text-base font-bold text-indigo-300 mt-2.5 mb-1" {...props} />
+                    <h3 className="text-sm sm:text-base font-semibold text-slate-200 mt-3 mb-1" {...props} />
                   ),
                   p: ({ ...props }) => (
-                    <p className="mb-2.5 text-slate-200 leading-relaxed" {...props} />
+                    <p className="mb-3 text-slate-200 leading-relaxed" {...props} />
                   ),
                   ul: ({ ...props }) => (
-                    <ul className="list-disc list-inside mb-3 space-y-1 text-slate-200 pl-1" {...props} />
+                    <ul className="list-disc list-inside mb-3 space-y-1.5 text-slate-200 pl-1" {...props} />
                   ),
                   ol: ({ ...props }) => (
-                    <ol className="list-decimal list-inside mb-3 space-y-1 text-slate-200 pl-1" {...props} />
+                    <ol className="list-decimal list-inside mb-3 space-y-1.5 text-slate-200 pl-1" {...props} />
                   ),
                   li: ({ ...props }) => (
                     <li className="text-slate-200 leading-relaxed" {...props} />
                   ),
                   strong: ({ ...props }) => (
-                    <strong className="font-bold text-white" {...props} />
+                    <strong className="font-semibold text-white" {...props} />
                   ),
                   em: ({ ...props }) => (
                     <em className="italic text-slate-300" {...props} />
                   ),
                   blockquote: ({ ...props }) => (
-                    <blockquote className="border-l-4 border-blue-500 pl-3 py-1.5 my-2.5 bg-blue-950/20 rounded-r text-slate-300 italic" {...props} />
+                    <blockquote className="border-l-2 border-slate-600 pl-3.5 py-1 my-3 bg-slate-900/40 text-slate-300 italic rounded-r" {...props} />
                   ),
                   table: ({ ...props }) => (
                     <div className="overflow-x-auto my-3">
-                      <table className="w-full text-left border-collapse border border-slate-700 rounded-lg text-xs sm:text-sm" {...props} />
+                      <table className="w-full text-left border-collapse border border-slate-800 rounded-lg text-xs sm:text-sm" {...props} />
                     </div>
                   ),
                   th: ({ ...props }) => (
-                    <th className="border border-slate-700 bg-slate-800 px-3 py-2 font-semibold text-slate-200" {...props} />
+                    <th className="border border-slate-800 bg-slate-900 px-3 py-2 font-semibold text-slate-200" {...props} />
                   ),
                   td: ({ ...props }) => (
-                    <td className="border border-slate-700 px-3 py-2 text-slate-300" {...props} />
+                    <td className="border border-slate-800 px-3 py-2 text-slate-300" {...props} />
                   ),
                 }}
               >
@@ -1043,76 +1032,15 @@ export default function Home() {
               </ReactMarkdown>
             </div>
 
-            {/* Footer Reminder */}
-            <div className="mt-3 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-              <span>Status: Tersimpan otomatis ke Supabase</span>
+            {/* Footer Status */}
+            <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
+              <span>Arsip: Tersimpan di database lokal</span>
               <button
                 onClick={handleCopy}
-                className="text-blue-400 hover:text-blue-300 font-medium"
+                className="text-slate-400 hover:text-slate-200 font-medium transition"
               >
                 Salin lagi
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── File Download Section ── Only shown when user requested a file */}
-        {answer && !loading && requestedFileType && (
-          <div className="bg-gradient-to-r from-emerald-950/40 to-teal-950/30 border border-emerald-700/40 rounded-2xl p-4 sm:p-5 flex flex-col gap-3 animate-fadeIn">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                <FileDown className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-emerald-300">
-                  {fileTypeEmoji(requestedFileType)} Unduh sebagai {fileTypeLabel(requestedFileType)}
-                </p>
-                <p className="text-[11px] text-slate-400">Masukkan nama file, lalu klik tombol unduh</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="text"
-                value={customFilename}
-                onChange={(e) => setCustomFilename(e.target.value)}
-                placeholder="Nama file (contoh: Makalah_Globalisasi)"
-                className="flex-1 bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition"
-              />
-              <button
-                type="button"
-                onClick={handleFileDownload}
-                disabled={fileDownloading}
-                className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 transition duration-200 shrink-0"
-              >
-                {fileDownloading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Membuat file...</span>
-                  </>
-                ) : (
-                  <>
-                    <FileDown className="w-4 h-4" />
-                    <span className="sm:hidden">Unduh</span>
-                    <span className="hidden sm:inline">Unduh {fileTypeLabel(requestedFileType)}</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Allow changing file type */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] text-slate-500">Format lain:</span>
-              {(['docx', 'xlsx', 'pptx', 'pdf'] as FileType[]).filter(t => t !== requestedFileType).map(t => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setRequestedFileType(t)}
-                  className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
-                >
-                  {fileTypeEmoji(t)} {fileTypeLabel(t)}
-                </button>
-              ))}
             </div>
           </div>
         )}
