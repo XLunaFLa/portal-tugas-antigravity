@@ -86,6 +86,19 @@ AUTO-DETEKSI JENIS SOAL:
 - Metodologi menggunakan kalimat pasif sistematis ("Data dihimpun melalui...", "Uji normalitas dilakukan...").
 - Kutipan langsung dibatasi ketat (utamakan parafrase bernas).
 - Rumusan masalah, pembahasan, dan kesimpulan wajib memiliki benang merah yang linier dan terukur.
+
+8. KEWAJIBAN MENJAWAB SEMUA SOAL — ZERO SKIP POLICY (MUTLAK):
+- DILARANG KERAS melewati, meringkas, atau menghilangkan satu pun nomor soal dari daftar yang diberikan.
+- Jika soal berjumlah 40 nomor, WAJIB dijawab 40 nomor: Soal 1 sampai Soal 40 semuanya harus hadir dalam output.
+- DILARANG menulis kalimat seperti: "Soal 5-10 mirip pola soal sebelumnya...", "dst.", "dan seterusnya", "Soal berikutnya serupa", atau variasi apapun yang menandakan penghilangan.
+- Jika output terasa panjang, TETAP lanjutkan hingga soal terakhir. Jangan potong di tengah jalan.
+- Cek ulang: apakah semua nomor soal sudah terjawab sebelum menyelesaikan output.
+
+9. INSTRUKSI ANALISIS GAMBAR & DIAGRAM (VISION MULTIMODAL):
+- Jika ada gambar, diagram, grafik, tabel, atau ilustrasi terlampir — WAJIB dianalisis sepenuhnya sebelum menjawab.
+- Identifikasi setiap elemen visual: angka, label sumbu, warna, bentuk geometri, garis, simbol, dan keterangan.
+- Gunakan data dari gambar sebagai dasar kalkulasi. Jangan asumsikan nilai tanpa melihat gambar terlebih dahulu.
+- Jika soal menunjuk gambar tertentu (misal: "lihat gambar di bawah", "[Gambar/Diagram Terlampir]"), obligasi jawab berdasarkan konten visual tersebut.
 `;
 
 // Helper to format answers cleanly into lines/bullets if squashed
@@ -348,15 +361,13 @@ export async function ask9Router(
 export async function askGemini(
   promptText: string, 
   images: ImagePart[] = [], 
-  preferredModel = 'gemini-3.5-flash-lite'
+  preferredModel = 'gemini-3.5-flash'
 ): Promise<string> {
   if (!GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY belum dikonfigurasi.');
   }
 
   const modelsToTry = [
-    'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite',
     'gemini-3-flash-preview',
     preferredModel, 
     'gemini-3.5-flash',
@@ -391,7 +402,7 @@ export async function askGemini(
         generationConfig: {
           temperature: 0.2,
           topP: 0.95,
-          maxOutputTokens: 3000,
+          maxOutputTokens: 8192,
         },
       };
 

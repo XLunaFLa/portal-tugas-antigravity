@@ -311,6 +311,18 @@ export default function Home() {
                   : d
               )
             );
+
+            // Tambahkan gambar yang diekstrak dari dokumen (diagram, tabel, dll.) ke antrian gambar AI
+            if (data.images && data.images.length > 0) {
+              const docImages = data.images.map((img: { fileName: string; mimeType: string; base64: string }) => ({
+                id: Math.random().toString(36).substring(2, 9),
+                name: img.fileName,
+                mimeType: img.mimeType,
+                base64: img.base64,
+                previewUrl: img.base64,
+              }));
+              setImages((prev) => [...prev, ...docImages]);
+            }
           } catch (err: any) {
             setDocuments((prev) =>
               prev.map((d) =>
