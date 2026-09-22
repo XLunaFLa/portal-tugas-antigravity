@@ -59,6 +59,7 @@ export default function Home() {
   } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -423,7 +424,7 @@ export default function Home() {
           {/* Tab 1: Kuis Bergambar */}
           {activeTab === 'kuis' && (
             <div className="flex flex-col gap-3">
-              {/* Dropzone */}
+              {/* Dropzone — Desktop: full drag-drop area */}
               <div
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={(e) => e.preventDefault()}
@@ -431,7 +432,7 @@ export default function Home() {
                   e.preventDefault();
                   if (e.dataTransfer.files) handleFileUpload(e.dataTransfer.files);
                 }}
-                className="border-2 border-dashed border-slate-700 hover:border-blue-500/60 bg-slate-900/50 hover:bg-slate-900/90 transition rounded-xl p-5 sm:p-8 flex flex-col items-center justify-center gap-2.5 cursor-pointer text-center group"
+                className="hidden sm:flex border-2 border-dashed border-slate-700 hover:border-blue-500/60 bg-slate-900/50 hover:bg-slate-900/90 transition rounded-xl p-8 flex-col items-center justify-center gap-2.5 cursor-pointer text-center group"
               >
                 <input
                   ref={fileInputRef}
@@ -443,18 +444,81 @@ export default function Home() {
                     if (e.target.files) handleFileUpload(e.target.files);
                   }}
                 />
-                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-blue-500/10 group-hover:bg-blue-500/20 text-blue-400 flex items-center justify-center transition">
-                  <ImageIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+                <div className="w-12 h-12 rounded-full bg-blue-500/10 group-hover:bg-blue-500/20 text-blue-400 flex items-center justify-center transition">
+                  <ImageIcon className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm font-semibold text-slate-200">
-                    <span className="hidden sm:inline">Klik untuk pilih gambar atau Seret tangkapan layar ke sini</span>
-                    <span className="sm:hidden">Ketuk untuk pilih foto / screenshot kuis</span>
+                  <p className="text-sm font-semibold text-slate-200">
+                    Klik untuk pilih gambar atau Seret tangkapan layar ke sini
                   </p>
-                  <p className="text-[11px] sm:text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-400 mt-1">
                     Bisa banyak gambar sekaligus (PNG, JPG, WebP)
                   </p>
                 </div>
+              </div>
+
+              {/* Mobile: Two separate touch buttons — Camera & Gallery */}
+              <div className="sm:hidden flex flex-col gap-3">
+                {/* Hidden inputs for mobile */}
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files) handleFileUpload(e.target.files);
+                    // Reset so same photo can be retaken
+                    if (cameraInputRef.current) cameraInputRef.current.value = '';
+                  }}
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files) handleFileUpload(e.target.files);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                />
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Camera button */}
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex flex-col items-center justify-center gap-2.5 border-2 border-dashed border-blue-700/60 bg-blue-950/30 active:bg-blue-900/50 transition rounded-xl py-6 px-3 cursor-pointer text-center"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                      <Camera className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-blue-300">📷 Kamera</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Foto langsung soalnya</p>
+                    </div>
+                  </button>
+
+                  {/* Gallery button */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex flex-col items-center justify-center gap-2.5 border-2 border-dashed border-slate-700 bg-slate-900/50 active:bg-slate-800/80 transition rounded-xl py-6 px-3 cursor-pointer text-center"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-slate-700/50 text-slate-300 flex items-center justify-center">
+                      <ImageIcon className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-200">🖼️ Galeri</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Pilih screenshot kuis</p>
+                    </div>
+                  </button>
+                </div>
+
+                <p className="text-center text-[11px] text-slate-500">
+                  Bisa pilih beberapa foto sekaligus dari galeri
+                </p>
               </div>
 
               {/* Uploaded Images Thumbnails */}
