@@ -2,15 +2,15 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Portal Tugas Antigravity',
-  description: 'Asisten Pengerjaan Kuis & Forum Diskusi Kuliah Cepat dan Akurat',
+  title: 'Portal Tugas — Academic Workbench',
+  description: 'Studio Pengerjaan Tugas, Diskusi, dan Naskah Akademik Bebas AI-Slop',
 };
 
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
-  themeColor: '#090d16',
+  themeColor: '#080b11',
 };
 
 export default function RootLayout({
@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
-      <body className="antialiased bg-[#090d16] text-slate-100 min-h-screen">
+      <body className="antialiased bg-[#080b11] text-slate-100 min-h-screen">
         {children}
       </body>
     </html>
