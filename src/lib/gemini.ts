@@ -1,4 +1,6 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const NINE_ROUTER_BASE_URL = process.env.NINE_ROUTER_BASE_URL || 'http://127.0.0.1:20129/v1';
+const NINE_ROUTER_API_KEY = process.env.NINE_ROUTER_API_KEY || 'sk-87aec067d631e9b8-5e1at0-4185ba89';
 
 export interface ImagePart {
   mimeType: string;
@@ -21,12 +23,75 @@ Pedoman Menjawab Soal Diskusi / Esai:
 4. Jaga agar bahasa tetap baku, akademis, dan sopan dalam bahasa Indonesia yang baik dan benar.
 `;
 
-export async function askGemini(promptText: string, images: ImagePart[] = [], preferredModel = 'gemini-3.6-flash'): Promise<string> {
-  if (!GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY is not configured.');
+// 1. Solver via 9Router (Pool 10 Akun Antigravity OAuth)
+export async function ask9Router(
+  promptText: string, 
+  images: ImagePart[] = [], 
+  model = 'ag/gemini-3.6-flash-high'
+): Promise<string> {
+  const contentParts: any[] = [];
+
+  const fullText = promptText && promptText.trim().length > 0 
+    ? `${SYSTEM_PROMPT}\n\nPertanyaan/Tugas Mahasiswa:\n${promptText}`
+    : `${SYSTEM_PROMPT}\n\nSilakan baca soal pada gambar di bawah ini, lalu berikan jawaban yang tepat dan penjelasan singkat beserta referensinya:`;
+
+  contentParts.push({ type: 'text', text: fullText });
+
+  for (const img of images) {
+    contentParts.push({
+      type: 'image_url',
+      image_url: {
+        url: `data:${img.mimeType};base64,{img.data}`.replace('{img.data}', img.data),
+      },
+    });
   }
 
-  // Model cascade: try preferred model first, then fallback
+  const payload = {
+    model,
+    messages: [
+      {
+        role: 'user',
+        content: contentParts,
+      },
+    ],
+    stream: false,
+    temperature: 0.2,
+  };
+
+  const response = await fetch(`${NINE_ROUTER_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${NINE_ROUTER_API_KEY}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`9Router error ${response.status}: ${errorBody}`);
+  }
+
+  const result = await response.json();
+  const answer = result.choices?.[0]?.message?.content;
+
+  if (!answer) {
+    throw new Error('9Router mengembalikan respons kosong.');
+  }
+
+  return answer;
+}
+
+// 2. Solver via Google Gemini Cloud Direct (Official Google API)
+export async function askGemini(
+  promptText: string, 
+  images: ImagePart[] = [], 
+  preferredModel = 'gemini-3.6-flash'
+): Promise<string> {
+  if (!GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY belum dikonfigurasi.');
+  }
+
   const modelsToTry = [preferredModel, 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-latest'];
   const uniqueModels = Array.from(new Set(modelsToTry));
 
@@ -35,17 +100,14 @@ export async function askGemini(promptText: string, images: ImagePart[] = [], pr
   for (const model of uniqueModels) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-
       const parts: any[] = [];
 
-      // Add system prompt and user text
       const fullText = promptText && promptText.trim().length > 0 
         ? `${SYSTEM_PROMPT}\n\nPertanyaan/Tugas Mahasiswa:\n${promptText}`
         : `${SYSTEM_PROMPT}\n\nSilakan baca soal pada gambar di bawah ini, lalu berikan jawaban yang tepat dan penjelasan singkat beserta referensinya:`;
 
       parts.push({ text: fullText });
 
-      // Add image parts if any
       for (const img of images) {
         parts.push({
           inlineData: {
@@ -56,11 +118,7 @@ export async function askGemini(promptText: string, images: ImagePart[] = [], pr
       }
 
       const payload = {
-        contents: [
-          {
-            parts,
-          },
-        ],
+        contents: [{ parts }],
         generationConfig: {
           temperature: 0.2,
           topP: 0.95,
@@ -70,9 +128,7 @@ export async function askGemini(promptText: string, images: ImagePart[] = [], pr
 
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
@@ -91,11 +147,34 @@ export async function askGemini(promptText: string, images: ImagePart[] = [], pr
 
       return answer;
     } catch (err: any) {
-      console.warn(`Attempt with model ${model} failed:`, err.message);
       lastError = err;
-      // continue to next model fallback
     }
   }
 
-  throw new Error(`All models failed. Last error: ${lastError?.message || 'Unknown error'}`);
+  throw new Error(`All Gemini models failed: ${lastError?.message || 'Unknown error'}`);
+}
+
+// 3. Smart Dual-Engine Orchestrator with Auto-Fallback
+export async function solveWithDualEngine(
+  promptText: string,
+  images: ImagePart[] = [],
+  engineChoice = 'auto', // 'auto' | '9router' | 'gemini'
+  modelChoice = 'ag/gemini-3.6-flash-high'
+): Promise<{ answer: string; usedEngine: string }> {
+  // If user chose 9Router or Auto:
+  if (engineChoice === '9router' || engineChoice === 'auto') {
+    try {
+      const answer = await ask9Router(promptText, images, modelChoice);
+      return { answer, usedEngine: '9Router (Pool 10 Akun Antigravity OAuth)' };
+    } catch (err: any) {
+      console.warn('9Router failed or unreachable, trying fallback to Google Gemini Cloud...', err.message);
+      if (engineChoice === '9router') {
+        throw new Error(`9Router tidak dapat dihubungi (${err.message}). Pastikan 9Router atau Tunnel di PC aktif.`);
+      }
+    }
+  }
+
+  // Fallback to Google Gemini Cloud Direct
+  const answer = await askGemini(promptText, images, 'gemini-3.6-flash');
+  return { answer, usedEngine: 'Google Gemini Direct (Cloud Engine)' };
 }

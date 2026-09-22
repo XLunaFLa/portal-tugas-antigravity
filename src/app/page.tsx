@@ -15,7 +15,8 @@ import {
   ExternalLink,
   Loader2,
   X,
-  HelpCircle
+  Cpu,
+  ShieldCheck
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -35,6 +36,7 @@ interface HistoryItem {
   prompt_text: string;
   answer_text: string;
   image_urls?: string[];
+  course_category?: string;
 }
 
 export default function Home() {
@@ -44,15 +46,16 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState('Sedang menganalisis...');
   const [answer, setAnswer] = useState<string | null>(null);
+  const [usedEngine, setUsedEngine] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gemini-3.6-flash');
+  const [engineChoice, setEngineChoice] = useState<'auto' | '9router' | 'gemini'>('auto');
+  const [selectedModel, setSelectedModel] = useState('ag/gemini-3.6-flash-high');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
-  // Load history from Supabase on mount
   useEffect(() => {
     fetchHistory();
   }, []);
@@ -69,12 +72,11 @@ export default function Home() {
     }
   };
 
-  // Smart Clipboard Paste (Ctrl+V) listener anywhere on page
+  // Smart Clipboard Paste (Ctrl+V) listener
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
-      // If user is pasting text in textarea, let it paste normally
       const activeElement = document.activeElement;
-      const isTextarea = activeElement?.tagName === 'TEXTAREA' || activeElement?.tagName === 'INPUT';
+      const isInput = activeElement?.tagName === 'TEXTAREA' || activeElement?.tagName === 'INPUT';
 
       if (e.clipboardData?.files && e.clipboardData.files.length > 0) {
         const file = e.clipboardData.files[0];
@@ -133,10 +135,11 @@ export default function Home() {
 
     setLoading(true);
     setAnswer(null);
+    setUsedEngine(null);
     setLoadingStatus(
       images.length > 0 
-        ? `Sedang membaca & menganalisis ${images.length} gambar kuis...` 
-        : 'Sedang menyusun jawaban analisis tugas...'
+        ? `Sedang membaca & menganalisis ${images.length} gambar kuis via ${engineChoice === '9router' ? '9Router Antigravity' : 'AI Dual-Engine'}...` 
+        : 'Sedang menyusun analisis tugas...'
     );
 
     try {
@@ -150,6 +153,7 @@ export default function Home() {
             base64: img.base64,
           })),
           type: activeTab,
+          engine: engineChoice,
           model: selectedModel,
         }),
       });
@@ -161,8 +165,9 @@ export default function Home() {
       }
 
       setAnswer(data.answer);
+      setUsedEngine(data.usedEngine || 'Antigravity AI');
       confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
-      fetchHistory(); // refresh history
+      fetchHistory();
 
       setTimeout(() => {
         resultRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -192,26 +197,27 @@ export default function Home() {
           <div>
             <h1 className="text-base lg:text-lg font-bold tracking-tight text-white flex items-center gap-2">
               Portal Tugas Antigravity
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                Online
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3" /> 9Router + Cloud
               </span>
             </h1>
             <p className="text-xs text-slate-400 hidden sm:block">
-              Auto-Solver Kuis Gambar & Diskusi Forum Kuliah
+              Auto-Solver Kuis Gambar & Diskusi Forum Kuliah (10 Akun Antigravity OAuth)
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Model Selector */}
+          {/* Engine Selector */}
           <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
+            value={engineChoice}
+            onChange={(e: any) => setEngineChoice(e.target.value)}
             className="text-xs bg-slate-900/90 border border-slate-700 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer"
+            title="Pilih Engine AI"
           >
-            <option value="gemini-3.6-flash">Gemini 3.6 Flash (Cepat)</option>
-            <option value="gemini-3.7-flash">Gemini 3.7 Flash</option>
-            <option value="gemini-flash-latest">Gemini Flash Latest</option>
+            <option value="auto">⚡ Auto (9Router + Cloud Fallback)</option>
+            <option value="9router">🚀 9Router (Antigravity Pool)</option>
+            <option value="gemini">☁️ Google Gemini Direct</option>
           </select>
 
           {/* History Button */}
@@ -234,7 +240,7 @@ export default function Home() {
               💡
             </div>
             <span>
-              <strong>Tips Cepat:</strong> Kamu bisa langsung screenshot soal (<kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200">Win+Shift+S</kbd>), lalu tekan <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200">Ctrl + V</kbd> di mana saja pada halaman ini!
+              <strong>Cara Cepat:</strong> Screenshot soal kuis (<kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200">Win+Shift+S</kbd>), lalu langsung tekan <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200">Ctrl + V</kbd> di halaman ini!
             </span>
           </div>
         </div>
@@ -333,16 +339,16 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Additional Notes / Context Input */}
+              {/* Additional Notes */}
               <div className="mt-2">
                 <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                  Catatan Tambahan / Instruksi Khusus (Opsional):
+                  Catatan Tambahan / Modul Khusus (Opsional):
                 </label>
                 <input
                   type="text"
                   value={promptText}
                   onChange={(e) => setPromptText(e.target.value)}
-                  placeholder="Contoh: Modul Manajemen Pemasaran EKMA4216, berikan opsi dan alasannya..."
+                  placeholder="Contoh: Modul Manajemen Pemasaran EKMA4216, jelaskan alasannya..."
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                 />
               </div>
@@ -429,6 +435,11 @@ export default function Home() {
                 <h2 className="text-base font-bold text-white tracking-tight">
                   Hasil Jawaban Tugas
                 </h2>
+                {usedEngine && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 flex items-center gap-1">
+                    <Cpu className="w-3 h-3" /> {usedEngine}
+                  </span>
+                )}
               </div>
 
               {/* Big Copy Button (For WordPad) */}
@@ -503,6 +514,7 @@ export default function Home() {
                     key={item.id}
                     onClick={() => {
                       setAnswer(item.answer_text);
+                      setUsedEngine(item.course_category || 'Tersimpan');
                       setShowHistory(false);
                       setTimeout(() => {
                         resultRef.current?.scrollIntoView({ behavior: 'smooth' });

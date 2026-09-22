@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { askGemini, ImagePart } from '@/lib/gemini';
+import { solveWithDualEngine, ImagePart } from '@/lib/gemini';
 import { uploadImageBuffer, saveRecord } from '@/lib/supabase';
 
 export const maxDuration = 60; // Allow sufficient time for multimodal reasoning
@@ -7,7 +7,13 @@ export const maxDuration = 60; // Allow sufficient time for multimodal reasoning
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { prompt_text = '', images = [], type = 'kuis', model = 'gemini-3.6-flash' } = body;
+    const { 
+      prompt_text = '', 
+      images = [], 
+      type = 'kuis', 
+      engine = 'auto', 
+      model = 'ag/gemini-3.6-flash-high' 
+    } = body;
 
     if (!prompt_text && (!images || images.length === 0)) {
       return NextResponse.json(
@@ -16,13 +22,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Format images for Gemini inlineData
+    // Format images for inlineData
     const imageParts: ImagePart[] = [];
     const imageUploadPromises: Promise<string | null>[] = [];
 
     if (Array.isArray(images) && images.length > 0) {
       for (const img of images) {
-        // img can be { mimeType: 'image/png', base64: '...' }
         const cleanBase64 = img.base64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
         const mimeType = img.mimeType || 'image/png';
 
@@ -41,8 +46,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Call Gemini with Multimodal prompt
-    const answer = await askGemini(prompt_text, imageParts, model);
+    // Call Dual-Engine (9Router Antigravity OAuth with Google Cloud Fallback)
+    const { answer, usedEngine } = await solveWithDualEngine(
+      prompt_text, 
+      imageParts, 
+      engine, 
+      model
+    );
 
     // Collect uploaded image URLs
     const uploadedUrls: string[] = [];
@@ -70,7 +80,7 @@ export async function POST(req: NextRequest) {
         prompt_text,
         image_urls: uploadedUrls,
         answer_text: answer,
-        course_category: 'Tugas Kuliah',
+        course_category: usedEngine,
       });
     } catch (e) {
       console.warn('Error saving to DB:', e);
@@ -79,6 +89,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       answer,
+      usedEngine,
       image_urls: uploadedUrls,
       record: savedData,
     });
