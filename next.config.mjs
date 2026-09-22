@@ -9,9 +9,9 @@ const nextConfig = {
       },
     ],
   },
-  // pptxgenjs, docx, xlsx, jspdf use Node.js built-ins — keep them server-side only
+  // pptxgenjs, docx, xlsx, jspdf, mammoth, pdf-parse use Node.js built-ins — keep them server-side only
   experimental: {
-    serverComponentsExternalPackages: ['pptxgenjs', 'docx', 'jspdf'],
+    serverComponentsExternalPackages: ['pptxgenjs', 'docx', 'jspdf', 'mammoth', 'pdf-parse'],
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {

@@ -10,14 +10,24 @@ export async function POST(req: NextRequest) {
     const { 
       prompt_text = '', 
       images = [], 
+      documents = [],
       type = 'kuis', 
       engine = 'auto', 
       model = 'ag/gemini-3.8-flash-high' 
     } = body;
 
-    if (!prompt_text && (!images || images.length === 0)) {
+    let combinedPrompt = prompt_text;
+    if (Array.isArray(documents) && documents.length > 0) {
+      for (const doc of documents) {
+        if (doc && doc.text) {
+          combinedPrompt += `\n\n=== LAMPIRAN DOKUMEN TUGAS: ${doc.fileName || 'File Tugas'} ===\n${doc.text}\n=== AKHIR DOKUMEN ===\n`;
+        }
+      }
+    }
+
+    if (!combinedPrompt.trim() && (!images || images.length === 0)) {
       return NextResponse.json(
-        { error: 'Harap berikan soal teks atau upload gambar screenshot kuis.' },
+        { error: 'Harap berikan soal teks, upload dokumen tugas, atau upload gambar screenshot kuis.' },
         { status: 400 }
       );
     }
@@ -50,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     // Call Dual-Engine (9Router Antigravity OAuth with Google Cloud Fallback)
     const { answer, usedEngine } = await solveWithDualEngine(
-      prompt_text, 
+      combinedPrompt, 
       imageParts, 
       engine, 
       model
@@ -72,14 +82,17 @@ export async function POST(req: NextRequest) {
     // Save task record to Supabase
     let savedData = null;
     try {
+      const firstDocName = Array.isArray(documents) && documents.length > 0 ? documents[0]?.fileName : null;
       const previewTitle = prompt_text 
         ? (prompt_text.slice(0, 45) + (prompt_text.length > 45 ? '...' : '')) 
-        : `Kuis Gambar (${imageParts.length} Soal)`;
+        : firstDocName
+          ? `File: ${firstDocName.slice(0, 40)}`
+          : `Kuis Gambar (${imageParts.length} Soal)`;
 
       savedData = await saveRecord({
         type: type === 'diskusi' ? 'diskusi' : 'kuis',
         title: previewTitle,
-        prompt_text,
+        prompt_text: combinedPrompt,
         image_urls: uploadedUrls,
         answer_text: answer,
         course_category: usedEngine,

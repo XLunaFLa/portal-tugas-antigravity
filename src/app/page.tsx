@@ -19,8 +19,12 @@ import {
   ShieldCheck,
   RefreshCw,
   FileDown,
+  FolderUp,
+  FileSpreadsheet,
+  File as FileIcon,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import ReactMarkdown from 'react-markdown';
 import {
   type FileType,
   detectRequestedFileType,
@@ -38,6 +42,18 @@ interface ImageItem {
   mimeType: string;
   base64: string;
   previewUrl: string;
+}
+
+interface AttachedDocument {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  text: string;
+  wordCount: number;
+  charCount: number;
+  loading?: boolean;
+  error?: string;
 }
 
 interface HistoryItem {
@@ -64,9 +80,11 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [engineChoice, setEngineChoice] = useState<'auto' | '9router' | 'gemini'>('auto');
   const [selectedModel, setSelectedModel] = useState('ag/gemini-3.8-flash-high');
+  const [documents, setDocuments] = useState<AttachedDocument[]>([]);
   const [submittedPrompt, setSubmittedPrompt] = useState<{
     text: string;
     images: ImageItem[];
+    documents?: AttachedDocument[];
   } | null>(null);
 
   // File download states
@@ -76,6 +94,7 @@ export default function Home() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -172,34 +191,105 @@ export default function Home() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        if (!loading && (promptText.trim().length > 0 || images.length > 0)) {
+        if (!loading && (promptText.trim().length > 0 || images.length > 0 || documents.length > 0)) {
           handleSubmit();
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [loading, promptText, images]);
+  }, [loading, promptText, images, documents]);
 
   const handleFileUpload = (files: FileList | File[]) => {
-    Array.from(files).forEach((file) => {
-      if (!file.type.startsWith('image/')) return;
+    const fileList = Array.from(files);
 
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result as string;
-        setImages((prev) => [
+    fileList.forEach((file) => {
+      // 1. If it's an image
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result as string;
+          setImages((prev) => [
+            ...prev,
+            {
+              id: Math.random().toString(36).substring(2, 9),
+              name: file.name || 'Screenshot',
+              mimeType: file.type,
+              base64,
+              previewUrl: base64,
+            },
+          ]);
+        };
+        reader.readAsDataURL(file);
+      } 
+      // 2. If it's a document (PDF, Word, Excel, Text, etc.)
+      else {
+        const tempId = Math.random().toString(36).substring(2, 9);
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'doc';
+
+        // Add placeholder with loading state immediately
+        setDocuments((prev) => [
           ...prev,
           {
-            id: Math.random().toString(36).substring(2, 9),
-            name: file.name || 'Screenshot',
-            mimeType: file.type,
-            base64,
-            previewUrl: base64,
+            id: tempId,
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: ext,
+            text: '',
+            wordCount: 0,
+            charCount: 0,
+            loading: true,
           },
         ]);
-      };
-      reader.readAsDataURL(file);
+
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const base64 = reader.result as string;
+          try {
+            const res = await fetch('/api/parse-file', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                fileName: file.name,
+                mimeType: file.type,
+                base64,
+              }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error || 'Gagal membaca dokumen.');
+            }
+
+            setDocuments((prev) =>
+              prev.map((d) =>
+                d.id === tempId
+                  ? {
+                      ...d,
+                      text: data.text,
+                      wordCount: data.wordCount,
+                      charCount: data.charCount,
+                      loading: false,
+                    }
+                  : d
+              )
+            );
+          } catch (err: any) {
+            setDocuments((prev) =>
+              prev.map((d) =>
+                d.id === tempId
+                  ? {
+                      ...d,
+                      loading: false,
+                      error: err.message || 'Gagal membaca file',
+                    }
+                  : d
+              )
+            );
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     });
   };
 
@@ -207,11 +297,21 @@ export default function Home() {
     setImages((prev) => prev.filter((img) => img.id !== id));
   };
 
+  const removeDocument = (id: string) => {
+    setDocuments((prev) => prev.filter((doc) => doc.id !== id));
+  };
+
   const handleSubmit = async () => {
-    if (!promptText.trim() && images.length === 0) return;
+    if (!promptText.trim() && images.length === 0 && documents.length === 0) return;
+
+    if (documents.some((d) => d.loading)) {
+      alert('Mohon tunggu sejenak, dokumen masih dibaca oleh sistem...');
+      return;
+    }
 
     const currentPromptText = promptText;
     const currentImages = [...images];
+    const currentDocuments = [...documents];
 
     // Detect if user wants output as a file
     const detectedFileType = detectRequestedFileType(currentPromptText);
@@ -226,23 +326,26 @@ export default function Home() {
     setAnswer(null);
     setUsedEngine(null);
     setLoadingStatus(
-      currentImages.length > 0 
-        ? `Sedang membaca & menganalisis ${currentImages.length} gambar kuis via ${engineChoice === '9router' ? '9Router Antigravity' : 'AI Dual-Engine'}...` 
-        : 'Sedang menyusun analisis tugas...'
+      currentDocuments.length > 0
+        ? `Sedang memproses ${currentDocuments.length} dokumen tugas via ${engineChoice === '9router' ? '9Router Antigravity' : 'AI Dual-Engine'}...`
+        : currentImages.length > 0 
+          ? `Sedang membaca & menganalisis ${currentImages.length} gambar kuis via ${engineChoice === '9router' ? '9Router Antigravity' : 'AI Dual-Engine'}...` 
+          : 'Sedang menyusun analisis tugas...'
     );
 
     // Set submitted prompt so it is displayed as the active question
     setSubmittedPrompt({
       text: currentPromptText,
       images: currentImages,
+      documents: currentDocuments,
     });
 
     // Clear inputs immediately so user can paste the NEXT question right away!
     setPromptText('');
     setImages([]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    setDocuments([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (docInputRef.current) docInputRef.current.value = '';
 
     try {
       const res = await fetch('/api/solve', {
@@ -253,6 +356,11 @@ export default function Home() {
           images: currentImages.map((img) => ({
             mimeType: img.mimeType,
             base64: img.base64,
+          })),
+          documents: currentDocuments.map((doc) => ({
+            fileName: doc.fileName,
+            text: doc.text,
+            wordCount: doc.wordCount,
           })),
           type: activeTab,
           engine: engineChoice,
@@ -278,6 +386,7 @@ export default function Home() {
       // Restore inputs on error so user doesn't lose their data
       setPromptText(currentPromptText);
       setImages(currentImages);
+      setDocuments(currentDocuments);
       alert(`Error: ${err.message || 'Gagal mendapatkan jawaban'}`);
     } finally {
       setLoading(false);
@@ -286,7 +395,12 @@ export default function Home() {
 
   const handleCopy = () => {
     if (!answer) return;
-    navigator.clipboard.writeText(answer);
+    // Strip raw markdown symbols (# and **) for clean pasting into forums/Word
+    const cleanAnswer = answer
+      .replace(/^#{1,6}\s+/gm, '') // Remove ### heading
+      .replace(/\*\*(.+?)\*\*/g, '$1') // Remove **bold**
+      .replace(/\*(.+?)\*/g, '$1'); // Remove *italic*
+    navigator.clipboard.writeText(cleanAnswer);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
@@ -464,10 +578,10 @@ export default function Home() {
 
         {/* Input Card */}
         <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col gap-4">
-          {/* Tab 1: Kuis Bergambar */}
+          {/* Tab 1: Kuis / Tugas Universal */}
           {activeTab === 'kuis' && (
             <div className="flex flex-col gap-3">
-              {/* Dropzone — Desktop: full drag-drop area */}
+              {/* Dropzone — Desktop: full drag-drop area for ANY file format */}
               <div
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={(e) => e.preventDefault()}
@@ -481,26 +595,27 @@ export default function Home() {
                   ref={fileInputRef}
                   type="file"
                   multiple
-                  accept="image/*"
+                  accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,.csv,.md,image/*"
                   className="hidden"
                   onChange={(e) => {
                     if (e.target.files) handleFileUpload(e.target.files);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
                   }}
                 />
                 <div className="w-12 h-12 rounded-full bg-blue-500/10 group-hover:bg-blue-500/20 text-blue-400 flex items-center justify-center transition">
-                  <ImageIcon className="w-6 h-6" />
+                  <FolderUp className="w-6 h-6" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-200">
-                    Klik untuk pilih gambar atau Seret tangkapan layar ke sini
+                    Tarik & Lepas File Tugas ke Sini atau Klik untuk Memilih
                   </p>
                   <p className="text-xs text-slate-400 mt-1">
-                    Bisa banyak gambar sekaligus (PNG, JPG, WebP)
+                    Mendukung SEMUA format: PDF, Word (.docx), Excel (.xlsx), Foto/Screenshot, Text, dll.
                   </p>
                 </div>
               </div>
 
-              {/* Mobile: Two separate touch buttons — Camera & Gallery */}
+              {/* Mobile: Three touch buttons — Camera, Gallery, and File/Doc */}
               <div className="sm:hidden flex flex-col gap-3">
                 {/* Hidden inputs for mobile */}
                 <input
@@ -511,7 +626,6 @@ export default function Home() {
                   className="hidden"
                   onChange={(e) => {
                     if (e.target.files) handleFileUpload(e.target.files);
-                    // Reset so same photo can be retaken
                     if (cameraInputRef.current) cameraInputRef.current.value = '';
                   }}
                 />
@@ -526,20 +640,31 @@ export default function Home() {
                     if (fileInputRef.current) fileInputRef.current.value = '';
                   }}
                 />
+                <input
+                  ref={docInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,.csv,.md,*/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files) handleFileUpload(e.target.files);
+                    if (docInputRef.current) docInputRef.current.value = '';
+                  }}
+                />
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-2">
                   {/* Camera button */}
                   <button
                     type="button"
                     onClick={() => cameraInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center gap-2.5 border-2 border-dashed border-blue-700/60 bg-blue-950/30 active:bg-blue-900/50 transition rounded-xl py-6 px-3 cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-blue-700/60 bg-blue-950/30 active:bg-blue-900/50 transition rounded-xl py-4 px-1.5 cursor-pointer text-center"
                   >
-                    <div className="w-12 h-12 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
-                      <Camera className="w-6 h-6" />
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                      <Camera className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-blue-300">📷 Kamera</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Foto langsung soalnya</p>
+                      <p className="text-xs font-bold text-blue-300">📷 Kamera</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Foto soal</p>
                     </div>
                   </button>
 
@@ -547,21 +672,32 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center gap-2.5 border-2 border-dashed border-slate-700 bg-slate-900/50 active:bg-slate-800/80 transition rounded-xl py-6 px-3 cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-slate-700 bg-slate-900/50 active:bg-slate-800/80 transition rounded-xl py-4 px-1.5 cursor-pointer text-center"
                   >
-                    <div className="w-12 h-12 rounded-full bg-slate-700/50 text-slate-300 flex items-center justify-center">
-                      <ImageIcon className="w-6 h-6" />
+                    <div className="w-10 h-10 rounded-full bg-slate-700/50 text-slate-300 flex items-center justify-center">
+                      <ImageIcon className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-200">🖼️ Galeri</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Pilih screenshot kuis</p>
+                      <p className="text-xs font-bold text-slate-200">🖼️ Galeri</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Screenshot</p>
+                    </div>
+                  </button>
+
+                  {/* Document / File button */}
+                  <button
+                    type="button"
+                    onClick={() => docInputRef.current?.click()}
+                    className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-emerald-700/60 bg-emerald-950/30 active:bg-emerald-900/50 transition rounded-xl py-4 px-1.5 cursor-pointer text-center"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                      <FolderUp className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-emerald-300">📁 File</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">PDF/Word</p>
                     </div>
                   </button>
                 </div>
-
-                <p className="text-center text-[11px] text-slate-500">
-                  Bisa pilih beberapa foto sekaligus dari galeri
-                </p>
               </div>
 
               {/* Uploaded Images Thumbnails */}
@@ -587,24 +723,72 @@ export default function Home() {
                         <X className="w-3.5 h-3.5" />
                       </button>
                       <span className="absolute bottom-1 left-1 text-[10px] font-semibold bg-black/60 px-1.5 py-0.5 rounded text-white backdrop-blur">
-                        Soal #{idx + 1}
+                        Gambar #{idx + 1}
                       </span>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Additional Notes */}
-              <div className="mt-2">
+              {/* Uploaded Documents List */}
+              {documents.length > 0 && (
+                <div className="flex flex-col gap-2 pt-1">
+                  <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <FolderUp className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Dokumen Tugas Terlampir ({documents.length}):</span>
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {documents.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between p-3 rounded-xl bg-slate-900/90 border border-slate-700/80 gap-3 shadow-sm"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 text-base">
+                            {doc.fileType === 'pdf' ? '📕' : doc.fileType.includes('xls') ? '📊' : doc.fileType.includes('doc') ? '📄' : '📝'}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-200 truncate" title={doc.fileName}>
+                              {doc.fileName}
+                            </p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              {doc.loading ? (
+                                <span className="text-blue-400 flex items-center gap-1">
+                                  <Loader2 className="w-3 h-3 animate-spin" /> Membaca isi file...
+                                </span>
+                              ) : doc.error ? (
+                                <span className="text-red-400 truncate">{doc.error}</span>
+                              ) : (
+                                <span className="text-emerald-400 font-medium">✓ {doc.wordCount.toLocaleString()} kata terbaca</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeDocument(doc.id)}
+                          className="p-1 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition shrink-0"
+                          title="Hapus dokumen"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Textarea for Kuis tab — allows multiline with Enter! */}
+              <div className="mt-1">
                 <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                  Catatan Tambahan / Modul Khusus (Opsional):
+                  Ketik / Tempel Soal, Catatan Modul, atau Instruksi Pengerjaan:
                 </label>
-                <input
-                  type="text"
+                <textarea
+                  rows={3}
                   value={promptText}
                   onChange={(e) => setPromptText(e.target.value)}
-                  placeholder="Contoh: Modul Manajemen Pemasaran EKMA4216, jelaskan alasannya..."
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                  placeholder="Ketik soal di sini (tekan Enter untuk baris baru), sebutkan modul (misal: EKMA4216), atau instruksi tugas..."
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition resize-y font-sans leading-relaxed"
                 />
               </div>
             </div>
@@ -620,8 +804,8 @@ export default function Home() {
                 rows={7}
                 value={promptText}
                 onChange={(e) => setPromptText(e.target.value)}
-                placeholder="Contoh: Jelaskan pendapat Saudara mengenai lima bidang utama pengambilan keputusan dalam rantai pasokan menurut modul SCM..."
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition resize-y font-mono leading-relaxed"
+                placeholder="Contoh: Jelaskan pendapat Saudara mengenai lima bidang utama pengambilan keputusan dalam rantai pasokan menurut modul SCM... (Tekan Enter untuk baris baru)"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition resize-y font-sans leading-relaxed"
               />
             </div>
           )}
@@ -633,11 +817,12 @@ export default function Home() {
             </span>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              {(images.length > 0 || promptText.trim().length > 0) && (
+              {(images.length > 0 || documents.length > 0 || promptText.trim().length > 0) && (
                 <button
                   type="button"
                   onClick={() => {
                     setImages([]);
+                    setDocuments([]);
                     setPromptText('');
                   }}
                   className="px-3.5 py-2.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-400 hover:text-slate-200 transition shrink-0"
@@ -649,7 +834,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={loading || (images.length === 0 && !promptText.trim())}
+                disabled={loading || (images.length === 0 && documents.length === 0 && !promptText.trim())}
                 className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold px-6 py-3 sm:py-2.5 rounded-xl shadow-lg shadow-blue-600/25 transition duration-200"
               >
                 {loading ? (
@@ -748,16 +933,33 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Display Submitted Question/Image as Prompt Card */}
-            {submittedPrompt && (submittedPrompt.text || submittedPrompt.images.length > 0) && (
+            {/* Display Submitted Question/Image/Document as Prompt Card */}
+            {submittedPrompt && (submittedPrompt.text || submittedPrompt.images.length > 0 || (submittedPrompt.documents && submittedPrompt.documents.length > 0)) && (
               <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col gap-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-blue-400" />
-                    Soal yang Diajukan:
+                    Soal / File yang Diajukan:
                   </span>
                 </div>
 
+                {/* Submitted Documents Badges */}
+                {submittedPrompt.documents && submittedPrompt.documents.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {submittedPrompt.documents.map((doc, i) => (
+                      <span
+                        key={doc.id || i}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-200 font-medium"
+                      >
+                        <span>{doc.fileType === 'pdf' ? '📕' : doc.fileType.includes('xls') ? '📊' : doc.fileType.includes('doc') ? '📄' : '📝'}</span>
+                        <span className="truncate max-w-[200px]">{doc.fileName}</span>
+                        <span className="text-[10px] text-emerald-400">({doc.wordCount.toLocaleString()} kata)</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Submitted Images */}
                 {submittedPrompt.images.length > 0 && (
                   <div className="flex gap-3 flex-wrap pt-1">
                     {submittedPrompt.images.map((img, i) => (
@@ -790,9 +992,55 @@ export default function Home() {
               </div>
             )}
 
-            {/* Answer Content */}
-            <div className="prose prose-invert max-w-none text-slate-200 text-sm sm:text-base leading-relaxed whitespace-pre-wrap font-sans selection:bg-blue-600 selection:text-white">
-              {answer}
+            {/* Answer Content — Rendered cleanly via ReactMarkdown without raw # and * symbols */}
+            <div className="text-slate-200 text-sm sm:text-base leading-relaxed font-sans selection:bg-blue-600 selection:text-white space-y-3">
+              <ReactMarkdown
+                components={{
+                  h1: ({ ...props }) => (
+                    <h1 className="text-lg sm:text-xl font-bold text-white mt-4 mb-2 border-b border-slate-700/60 pb-1.5 flex items-center gap-2" {...props} />
+                  ),
+                  h2: ({ ...props }) => (
+                    <h2 className="text-base sm:text-lg font-bold text-blue-300 mt-3 mb-1.5 flex items-center gap-2" {...props} />
+                  ),
+                  h3: ({ ...props }) => (
+                    <h3 className="text-sm sm:text-base font-bold text-indigo-300 mt-2.5 mb-1" {...props} />
+                  ),
+                  p: ({ ...props }) => (
+                    <p className="mb-2.5 text-slate-200 leading-relaxed" {...props} />
+                  ),
+                  ul: ({ ...props }) => (
+                    <ul className="list-disc list-inside mb-3 space-y-1 text-slate-200 pl-1" {...props} />
+                  ),
+                  ol: ({ ...props }) => (
+                    <ol className="list-decimal list-inside mb-3 space-y-1 text-slate-200 pl-1" {...props} />
+                  ),
+                  li: ({ ...props }) => (
+                    <li className="text-slate-200 leading-relaxed" {...props} />
+                  ),
+                  strong: ({ ...props }) => (
+                    <strong className="font-bold text-white" {...props} />
+                  ),
+                  em: ({ ...props }) => (
+                    <em className="italic text-slate-300" {...props} />
+                  ),
+                  blockquote: ({ ...props }) => (
+                    <blockquote className="border-l-4 border-blue-500 pl-3 py-1.5 my-2.5 bg-blue-950/20 rounded-r text-slate-300 italic" {...props} />
+                  ),
+                  table: ({ ...props }) => (
+                    <div className="overflow-x-auto my-3">
+                      <table className="w-full text-left border-collapse border border-slate-700 rounded-lg text-xs sm:text-sm" {...props} />
+                    </div>
+                  ),
+                  th: ({ ...props }) => (
+                    <th className="border border-slate-700 bg-slate-800 px-3 py-2 font-semibold text-slate-200" {...props} />
+                  ),
+                  td: ({ ...props }) => (
+                    <td className="border border-slate-700 px-3 py-2 text-slate-300" {...props} />
+                  ),
+                }}
+              >
+                {answer}
+              </ReactMarkdown>
             </div>
 
             {/* Footer Reminder */}
@@ -935,6 +1183,7 @@ export default function Home() {
                           base64: '',
                           previewUrl: url,
                         })),
+                        documents: [],
                       });
                       setShowHistory(false);
                       setTimeout(() => {
