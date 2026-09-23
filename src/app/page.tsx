@@ -27,6 +27,7 @@ import {
   FastForward,
   Sparkles,
   Zap,
+  MessageSquareText,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import ReactMarkdown from 'react-markdown';
@@ -111,6 +112,8 @@ export default function Home() {
   const [usedEngine, setUsedEngine] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [continuing, setContinuing] = useState(false);
+  const [followUpText, setFollowUpText] = useState('');
+  const [followUpLoading, setFollowUpLoading] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [engineChoice, setEngineChoice] = useState<'auto' | '9router' | 'gemini'>('auto');
@@ -121,6 +124,8 @@ export default function Home() {
     images: ImageItem[];
     documents?: AttachedDocument[];
   } | null>(null);
+
+  const followUpRef = useRef<HTMLDivElement>(null);
 
   // File download states
   const [requestedFileType, setRequestedFileType] = useState<FileType | null>(null);
@@ -485,35 +490,31 @@ export default function Home() {
     }
   };
 
-  const handleContinueSolve = async () => {
-    if (!answer || loading || continuing) return;
+  const handleFollowUpSubmit = async () => {
+    if (!followUpText.trim() || !answer || followUpLoading || loading) return;
 
-    // Temukan nomor soal terakhir yang sudah terjawab di naskah saat ini
-    const matches = Array.from(answer.matchAll(/Soal\s+(\d+)/gi));
-    let lastNum = 0;
-    if (matches.length > 0) {
-      const nums = matches.map((m) => parseInt(m[1], 10)).filter((n) => !isNaN(n));
-      if (nums.length > 0) {
-        lastNum = Math.max(...nums);
-      }
-    }
-    const nextStartNum = lastNum > 0 ? lastNum + 1 : 1;
-
-    setContinuing(true);
-    setLoadingStatus(`Melanjutkan pengerjaan mulai Soal ${nextStartNum}...`);
+    const currentFollowUp = followUpText.trim();
+    setFollowUpLoading(true);
 
     try {
-      const continuationPrompt = `LANJUTKAN PENGERJAAN SOAL BERIKUTNYA!\n`
-        + `Soal nomor 1 sampai ${lastNum} telah selesai dikerjakan sebelumnya.\n`
-        + `Mulai kerjakan langsung dari NOMOR ${nextStartNum} sampai butir soal paling akhir secara lengkap dan tuntas!\n`
-        + `Gunakan format: ### Soal ${nextStartNum}, dst.\n`
-        + (submittedPrompt?.text ? `\nInstruksi awal pengguna: ${submittedPrompt.text}` : '');
+      const contextualPrompt = `=== NASKAH JAWABAN TUGAS SAAT INI ===\n`
+        + `${answer}\n`
+        + `=== AKHIR NASKAH JAWABAN ===\n\n`
+        + `PERTANYAAN / KRITIK / PERMINTAAN DISKUSI DARI MAHASISWA:\n`
+        + `"${currentFollowUp}"\n\n`
+        + `PETUNJUK PENGERJAAN DISKUSI:\n`
+        + `- Tanggapi kritik atau pertanyaan mahasiswa di atas secara terperinci, santun, dan berbobot akademis.\n`
+        + `- Jika mahasiswa mengoreksi jawaban/rumus pada nomor tertentu, periksa kebenarannya dan berikan ulasan perbaikan yang tepat dan jelas.\n`
+        + `- Jika mahasiswa meminta penjelasan langkah-langkah lebih mendalam, jabarkan logika atau perhitungannya langkah demi langkah secara tuntas dengan notasi LaTeX jika ada rumus.\n`
+        + `- Jika pengguna meminta melanjutkan soal yang belum selesai, kerjakan nomor-nomor berikutnya secara tuntas.\n`
+        + `- Jawaban harus langsung pada inti pembahasan tanpa basa-basi klise chatbot.`
+        + (submittedPrompt?.text ? `\n(Konteks instruksi awal pengguna: ${submittedPrompt.text})` : '');
 
       const res = await fetch('/api/solve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt_text: continuationPrompt,
+          prompt_text: contextualPrompt,
           images: (submittedPrompt?.images || []).map((img: any) => ({
             data: img.base64 || img.data,
             mimeType: img.mimeType,
@@ -534,21 +535,29 @@ export default function Home() {
       try {
         data = JSON.parse(responseText);
       } catch {
-        throw new Error('Gagal melanjutkan pengerjaan. Silakan coba lagi.');
+        throw new Error('Gagal memproses diskusi lanjutan. Silakan coba lagi.');
       }
 
       if (!res.ok) {
-        throw new Error(data?.error || 'Gagal melanjutkan pengerjaan.');
+        throw new Error(data?.error || 'Gagal memproses tanggapan.');
       }
 
-      setAnswer((prev) => (prev ? `${prev}\n\n---\n\n${data.answer}` : data.answer));
-      confetti({ particleCount: 40, spread: 50, origin: { y: 0.8 } });
+      setAnswer((prev) => 
+        prev 
+          ? `${prev}\n\n---\n\n### 💬 Diskusi & Tanggapan Koreksi\n> **Kritik/Pertanyaan:** *${currentFollowUp}*\n\n${data.answer}`
+          : data.answer
+      );
+      setFollowUpText('');
+      confetti({ particleCount: 35, spread: 55, origin: { y: 0.85 } });
       fetchHistory();
+
+      setTimeout(() => {
+        followUpRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 150);
     } catch (err: any) {
-      alert(`Gagal melanjutkan: ${err.message}`);
+      alert(`Gagal mengirim diskusi: ${err.message}`);
     } finally {
-      setContinuing(false);
-      setLoadingStatus('');
+      setFollowUpLoading(false);
     }
   };
 
@@ -1198,19 +1207,6 @@ export default function Home() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.95 }}
                     type="button"
-                    onClick={handleContinueSolve}
-                    disabled={continuing || loading}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition cursor-pointer disabled:opacity-50"
-                    title="Lanjutkan pengerjaan nomor soal berikutnya"
-                  >
-                    {continuing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FastForward className="w-3.5 h-3.5" />}
-                    <span>{continuing ? 'Melanjutkan...' : 'Lanjutkan Soal'}</span>
-                  </motion.button>
-
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.95 }}
-                    type="button"
                     onClick={handleCopy}
                     className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer shadow-sm ${
                       copied
@@ -1437,32 +1433,104 @@ export default function Home() {
                 </ReactMarkdown>
               </div>
 
-              {/* Bottom Continuation Callout Bar */}
-              <div className="mt-4 p-3.5 sm:p-4 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 shrink-0">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">
-                      Ingin melanjutkan pengerjaan nomor soal berikutnya?
-                    </p>
-                    <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-                      Klik tombol untuk melanjutkan nomor soal yang tersisa secara otomatis.
-                    </p>
+              {/* Interactive Critique & Discussion Section */}
+              <div 
+                ref={followUpRef}
+                className="mt-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-blue-50/70 via-indigo-50/40 to-slate-50/60 dark:from-slate-900/90 dark:via-[#0d1424]/90 dark:to-slate-950/80 border border-blue-200/80 dark:border-blue-900/50 shadow-lg flex flex-col gap-3.5"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/25 shrink-0">
+                      <MessageSquareText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                        <span>Ada yang perlu dikritik soal jawabannya?</span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                          Diskusi Interaktif
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
+                        Diskusikan dengan AI, minta penjabaran langkah tertentu, koreksi jika ada yang keliru, atau lanjutkan materi.
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.96 }}
-                  type="button"
-                  onClick={handleContinueSolve}
-                  disabled={continuing || loading}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm cursor-pointer shrink-0 disabled:opacity-50"
-                >
-                  {continuing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FastForward className="w-3.5 h-3.5" />}
-                  <span>{continuing ? 'Sedang Melanjutkan...' : 'Lanjutkan Soal Berikutnya'}</span>
-                </motion.button>
+
+                {/* Quick Critique Suggestion Pills */}
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'Jelaskan cara pengerjaan nomor ... lebih detail',
+                    'Koreksi rumus atau hitungan pada nomor ...',
+                    'Tolong buatkan versi narasi yang lebih ringkas',
+                    'Tambahkan rujukan teori atau referensi modul',
+                  ].map((suggestion, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setFollowUpText(suggestion)}
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-white/80 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300 transition cursor-pointer shadow-sm hover:border-blue-400 dark:hover:border-blue-500"
+                    >
+                      + {suggestion}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Follow-up Textarea & Submit Button */}
+                <div className="flex flex-col gap-2">
+                  <textarea
+                    rows={3}
+                    value={followUpText}
+                    onChange={(e) => setFollowUpText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        if (!followUpLoading && followUpText.trim()) {
+                          handleFollowUpSubmit();
+                        }
+                      }
+                    }}
+                    placeholder="Tuliskan kritik, pertanyaan lanjutan, atau koreksi di sini... (Tekan Ctrl + Enter untuk kirim)"
+                    className="w-full bg-white dark:bg-slate-950/80 border border-slate-300/80 dark:border-slate-800 rounded-xl p-3 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-500 transition resize-y font-sans leading-relaxed shadow-inner"
+                  />
+
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+                      Pintasan: <kbd className="px-1 py-0.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-[9px] shadow-sm">Ctrl + Enter</kbd>
+                    </span>
+                    <div className="flex items-center gap-2 ml-auto">
+                      {followUpText.trim().length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setFollowUpText('')}
+                          className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition cursor-pointer"
+                        >
+                          Batal
+                        </button>
+                      )}
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.96 }}
+                        type="button"
+                        onClick={handleFollowUpSubmit}
+                        disabled={followUpLoading || !followUpText.trim()}
+                        className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold transition shadow-md shadow-blue-500/20 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        {followUpLoading ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Mendiskusikan...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-3.5 h-3.5" />
+                            <span>Kirim Diskusi / Koreksi</span>
+                          </>
+                        )}
+                      </motion.button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Footer Status */}
