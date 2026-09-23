@@ -18,6 +18,7 @@
     "lucide-react": "^0.453.0",
     "mammoth": "^1.12.3",
     "mathml2omml": "^0.5.0",
+    "motion": "^13.4.1",
     "next": "^14.2.15",
     "pdf-parse": "^2.4.5",
     "pptxgenjs": "^4.0.1",

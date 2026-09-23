@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Camera, 
   FileText, 
@@ -25,6 +26,7 @@ import {
   Moon,
   FastForward,
   Sparkles,
+  Zap,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import ReactMarkdown from 'react-markdown';
@@ -71,6 +73,33 @@ interface HistoryItem {
   image_urls?: string[];
   course_category?: string;
 }
+
+const STARTER_PROMPTS = [
+  {
+    icon: '📐',
+    label: 'Hitung & Rumus',
+    desc: 'Matematika, Fisika, Stat',
+    text: 'Selesaikan soal hitungan berikut secara bertahap, sertakan rumus matematis dengan notasi LaTeX dan pembuktian langkah demi langkah:',
+  },
+  {
+    icon: '📖',
+    label: 'Esai & Diskusi',
+    desc: 'Analisis berbasis teori',
+    text: 'Buatkan ulasan analisis akademik mendalam, rujukan teori terpercaya, dan argumentasi ilmiah bebas AI-slop untuk topik diskusi berikut:',
+  },
+  {
+    icon: '⚖️',
+    label: 'Bedah Kasus Kuliah',
+    desc: 'Metodologi & rekomendasi',
+    text: 'Lakukan analisis studi kasus berikut menggunakan kerangka pemikiran komprehensif, identifikasi isu pokok, dan berikan solusi strategis:',
+  },
+  {
+    icon: '📊',
+    label: 'Olah Tabel Data',
+    desc: 'Format data & ringkasan',
+    text: 'Ekstrak dan susun data numerik berikut ke dalam bentuk tabel analitis, sertakan interpretasi kritis dan kesimpulan eksekutif:',
+  },
+];
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'kuis' | 'diskusi'>('kuis');
@@ -560,37 +589,51 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#080b11] text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white dark:selection:bg-slate-700 dark:selection:text-white transition-colors duration-150">
-      {/* Top Navbar — Restrained, dignified, craftsmanship */}
-      <header className="border-b border-slate-200 dark:border-white/[0.08] bg-white/95 dark:bg-[#0c1017]/90 backdrop-blur-md sticky top-0 z-30 px-3 sm:px-6 py-2.5 sm:py-3 transition-colors print:hidden">
+    <div className="min-h-screen bg-transparent text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white dark:selection:bg-blue-500/30 dark:selection:text-white transition-colors duration-150 relative">
+      {/* Top Navbar — Acrylic Glass Craftsmanship */}
+      <header className="border-b border-slate-200/80 dark:border-white/[0.08] bg-white/80 dark:bg-[#0c1017]/75 backdrop-blur-xl sticky top-0 z-30 px-3 sm:px-6 py-2.5 sm:py-3 transition-colors print:hidden">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           {/* Brand Mark & Title */}
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700/80 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-sm shrink-0">
-              <BookOpen className="w-4 h-4 text-slate-700 dark:text-slate-200" />
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl blur opacity-30 group-hover:opacity-70 transition duration-300" />
+              <div className="relative w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm shrink-0">
+                <BookOpen className="w-4 h-4" />
+              </div>
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate">
                   Portal Tugas
                 </h1>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60 hidden sm:inline-flex items-center">
-                  Academic Studio
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 hidden sm:inline-flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5" /> Academic Studio
                 </span>
               </div>
               <p className="text-[11px] text-slate-600 dark:text-slate-400 hidden md:block truncate">
-                Workbench pengerjaan soal, analisis esai, dan tugas mandiri bebas AI-slop
+                Workbench pengerjaan soal, analisis esai, dan naskah akademik bebas AI-slop
               </p>
             </div>
           </div>
 
           {/* Desktop Selectors & Actions */}
           <div className="hidden sm:flex items-center gap-2 shrink-0">
+            {/* 9Router Status Beacon */}
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 text-[11px] font-medium text-emerald-700 dark:text-emerald-300 mr-1">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span>9Router Active</span>
+            </div>
+
             {/* Theme Toggle Button Desktop */}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.92 }}
               type="button"
               onClick={toggleTheme}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-300 dark:border-slate-700 rounded-lg transition text-slate-700 dark:text-slate-200 shrink-0 cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-white/90 hover:bg-slate-100 dark:bg-slate-900/90 dark:hover:bg-slate-800 border border-slate-300/80 dark:border-slate-800 rounded-lg transition text-slate-700 dark:text-slate-200 shrink-0 cursor-pointer shadow-sm"
               title={theme === 'dark' ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
             >
               {theme === 'dark' ? (
@@ -604,12 +647,12 @@ export default function Home() {
                   <span className="text-slate-800">Gelap</span>
                 </>
               )}
-            </button>
+            </motion.button>
 
             <select
               value={engineChoice}
               onChange={(e: any) => setEngineChoice(e.target.value)}
-              className="text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 dark:focus:border-slate-500 cursor-pointer font-medium"
+              className="text-xs bg-white/90 dark:bg-slate-900/90 border border-slate-300/80 dark:border-slate-800 text-slate-800 dark:text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 dark:focus:border-slate-500 cursor-pointer font-medium shadow-sm"
               title="Pilih Engine Eksekusi"
             >
               <option value="auto">Auto Router</option>
@@ -620,7 +663,7 @@ export default function Home() {
             <select
               value={selectedModel}
               onChange={(e: any) => setSelectedModel(e.target.value)}
-              className="text-xs max-w-[210px] lg:max-w-none bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 dark:focus:border-slate-500 cursor-pointer font-medium truncate"
+              className="text-xs max-w-[210px] lg:max-w-none bg-white/90 dark:bg-slate-900/90 border border-slate-300/80 dark:border-slate-800 text-slate-800 dark:text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 dark:focus:border-slate-500 cursor-pointer font-medium truncate shadow-sm"
               title="Model Penalaran"
             >
               <option value="ag/gemini-3.8-flash-medium">Gemini 3.8 Flash (Cepat & Pintar - Rekomendasi)</option>
@@ -631,16 +674,18 @@ export default function Home() {
               <option value="ag/gemini-pro-agent">Gemini Pro Agent (Vision)</option>
             </select>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => {
                 setShowHistory(true);
                 fetchHistory();
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-300 dark:border-slate-700 rounded-lg transition text-slate-700 dark:text-slate-200 shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white/90 hover:bg-slate-100 dark:bg-slate-900/90 dark:hover:bg-slate-800 border border-slate-300/80 dark:border-slate-800 rounded-lg transition text-slate-700 dark:text-slate-200 shrink-0 shadow-sm cursor-pointer"
             >
               <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               <span>Arsip ({history.length})</span>
-            </button>
+            </motion.button>
           </div>
 
           {/* Mobile Right */}
@@ -649,7 +694,7 @@ export default function Home() {
             <button
               type="button"
               onClick={toggleTheme}
-              className="p-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200"
+              className="p-1.5 text-xs font-medium bg-white/90 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-800 rounded-lg text-slate-700 dark:text-slate-200"
               title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
             >
               {theme === 'dark' ? (
@@ -664,7 +709,7 @@ export default function Home() {
                 setShowHistory(true);
                 fetchHistory();
               }}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200"
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-white/90 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-800 rounded-lg text-slate-700 dark:text-slate-200"
             >
               <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               <span>Arsip ({history.length})</span>
@@ -673,7 +718,7 @@ export default function Home() {
         </div>
 
         {/* Mobile Secondary Bar */}
-        <div className="sm:hidden grid grid-cols-2 gap-1.5 pt-2 mt-2 border-t border-slate-200 dark:border-slate-800/80">
+        <div className="sm:hidden grid grid-cols-2 gap-1.5 pt-2 mt-2 border-t border-slate-200/80 dark:border-slate-800/80">
           <select
             value={engineChoice}
             onChange={(e: any) => setEngineChoice(e.target.value)}
@@ -703,44 +748,67 @@ export default function Home() {
         {/* Subtle Ambient Utility Bar */}
         <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 px-1">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-            <span className="font-semibold text-slate-800 dark:text-slate-300">Siap Menganalisis</span>
-            <span className="text-slate-400 dark:text-slate-500 hidden sm:inline">•</span>
-            <span className="text-slate-600 dark:text-slate-400 hidden sm:inline">Bebas AI-Slop & Didasarkan Referensi Valid</span>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+            </span>
+            <span className="font-semibold text-slate-800 dark:text-slate-200">AI Dual-Engine Ready</span>
+            <span className="text-slate-400 dark:text-slate-600 hidden sm:inline">•</span>
+            <span className="text-slate-600 dark:text-slate-400 hidden sm:inline">Bebas AI-Slop & Berlandaskan Literatur Sahih</span>
           </div>
           <span className="text-[11px] text-slate-500 hidden sm:inline">
-            Tempel gambar via <kbd className="px-1 py-0.5 bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-slate-700 dark:text-slate-300 font-mono text-[10px]">Ctrl+V</kbd>
+            Tempel gambar / soal via <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-slate-700 dark:text-slate-300 font-mono text-[10px] shadow-sm">Ctrl+V</kbd>
           </span>
         </div>
 
-        {/* Studio Segmented Control */}
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-200/80 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-800 w-full sm:w-fit">
+        {/* Studio Segmented Control — Smooth Motion Gliding Pill */}
+        <div className="relative flex items-center p-1 rounded-xl bg-slate-200/70 dark:bg-slate-900/80 backdrop-blur-md border border-slate-300/70 dark:border-slate-800/80 w-full sm:w-fit">
           <button
+            type="button"
             onClick={() => setActiveTab('kuis')}
-            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
+            className={`relative flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors z-10 cursor-pointer ${
               activeTab === 'kuis'
-                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-300 dark:border-slate-700/80'
+                ? 'text-slate-900 dark:text-white'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            <Camera className="w-3.5 h-3.5" />
-            <span>Kuis & Pilihan Ganda</span>
+            {activeTab === 'kuis' && (
+              <motion.div
+                layoutId="activeTabPill"
+                className="absolute inset-0 rounded-lg bg-white dark:bg-slate-800 shadow-sm border border-slate-300/70 dark:border-slate-700/80"
+                transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-2">
+              <Camera className="w-3.5 h-3.5" />
+              <span>Kuis & Pilihan Ganda</span>
+            </span>
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('diskusi')}
-            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
+            className={`relative flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors z-10 cursor-pointer ${
               activeTab === 'diskusi'
-                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-300 dark:border-slate-700/80'
+                ? 'text-slate-900 dark:text-white'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Esai, Diskusi & Skripsi</span>
+            {activeTab === 'diskusi' && (
+              <motion.div
+                layoutId="activeTabPill"
+                className="absolute inset-0 rounded-lg bg-white dark:bg-slate-800 shadow-sm border border-slate-300/70 dark:border-slate-700/80"
+                transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-2">
+              <FileText className="w-3.5 h-3.5" />
+              <span>Esai, Diskusi & Skripsi</span>
+            </span>
           </button>
         </div>
 
         {/* Universal Input Card */}
-        <div className="bg-white dark:bg-[#0e131e] border border-slate-200 dark:border-white/[0.07] rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col gap-4">
+        <div className="glass-panel card-glow-border rounded-2xl p-4 sm:p-6 shadow-2xl flex flex-col gap-4">
           {/* Tab 1: Kuis / Tugas Universal */}
           {activeTab === 'kuis' && (
             <div className="flex flex-col gap-3">
@@ -752,7 +820,7 @@ export default function Home() {
                   e.preventDefault();
                   if (e.dataTransfer.files) handleFileUpload(e.dataTransfer.files);
                 }}
-                className="hidden sm:flex border border-dashed border-slate-300 hover:border-blue-500 dark:border-slate-700/80 dark:hover:border-slate-500 bg-slate-50 hover:bg-slate-100/80 dark:bg-slate-950/40 dark:hover:bg-slate-950/70 transition-all duration-200 rounded-xl p-7 flex-col items-center justify-center gap-2 cursor-pointer text-center group"
+                className="hidden sm:flex border border-dashed border-slate-300 hover:border-blue-500 dark:border-slate-700/80 dark:hover:border-blue-500/70 bg-slate-50/70 hover:bg-slate-100/90 dark:bg-slate-950/40 dark:hover:bg-slate-950/70 transition-all duration-200 rounded-xl p-7 flex-col items-center justify-center gap-2 cursor-pointer text-center group shadow-inner"
               >
                 <input
                   ref={desktopInputRef}
@@ -765,15 +833,15 @@ export default function Home() {
                     if (desktopInputRef.current) desktopInputRef.current.value = '';
                   }}
                 />
-                <div className="w-10 h-10 rounded-xl bg-slate-200/80 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center group-hover:scale-105 transition">
-                  <FolderUp className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition shadow-sm">
+                  <FolderUp className="w-5 h-5" />
                 </div>
                 <div>
                   <p className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">
                     Seret berkas tugas atau <span className="text-blue-600 dark:text-blue-400 hover:underline">pilih dari komputer</span>
                   </p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Mendukung PDF, Word (.docx), Excel (.xlsx), Foto/Screenshot, dan Teks
+                    Mendukung PDF, Word (.docx), Excel (.xlsx), Slide (.pptx), Foto/Screenshot, dan Teks
                   </p>
                 </div>
               </div>
@@ -818,27 +886,27 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => cameraInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center gap-1.5 border border-slate-300 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900/90 active:bg-slate-200 dark:active:bg-slate-800 transition rounded-xl py-3.5 px-1 cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center gap-1.5 border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/90 active:bg-slate-100 dark:active:bg-slate-800 transition rounded-xl py-3.5 px-1 cursor-pointer text-center shadow-sm"
                   >
-                    <Camera className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                    <Camera className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-300">Foto Soal</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => galleryInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center gap-1.5 border border-slate-300 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900/90 active:bg-slate-200 dark:active:bg-slate-800 transition rounded-xl py-3.5 px-1 cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center gap-1.5 border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/90 active:bg-slate-100 dark:active:bg-slate-800 transition rounded-xl py-3.5 px-1 cursor-pointer text-center shadow-sm"
                   >
-                    <ImageIcon className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                    <ImageIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                     <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-300">Galeri Foto</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => docInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center gap-1.5 border border-slate-300 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900/90 active:bg-slate-200 dark:active:bg-slate-800 transition rounded-xl py-3.5 px-1 cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center gap-1.5 border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/90 active:bg-slate-100 dark:active:bg-slate-800 transition rounded-xl py-3.5 px-1 cursor-pointer text-center shadow-sm"
                   >
-                    <FolderUp className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                    <FolderUp className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                     <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-300">File Dokumen</span>
                   </button>
                 </div>
@@ -847,30 +915,36 @@ export default function Home() {
               {/* Uploaded Images Thumbnails */}
               {images.length > 0 && (
                 <div className="flex flex-wrap gap-2.5 pt-1">
-                  {images.map((img, idx) => (
-                    <div
-                      key={img.id}
-                      className="relative group w-24 h-24 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700/80 bg-slate-100 dark:bg-slate-950 shadow-sm"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={img.previewUrl}
-                        alt={`Soal ${idx + 1}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(img.id)}
-                        className="absolute top-1 right-1 p-1 rounded-full bg-slate-950/80 hover:bg-red-600 text-white shadow transition"
-                        title="Hapus gambar"
+                  <AnimatePresence>
+                    {images.map((img, idx) => (
+                      <motion.div
+                        key={img.id}
+                        initial={{ opacity: 0, scale: 0.85, y: 8 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.2 }}
+                        className="relative group w-24 h-24 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700/80 bg-slate-100 dark:bg-slate-950 shadow-sm"
                       >
-                        <X className="w-3 h-3" />
-                      </button>
-                      <span className="absolute bottom-1 left-1 text-[9px] font-medium bg-black/70 px-1.5 py-0.5 rounded text-slate-200 backdrop-blur">
-                        #{idx + 1}
-                      </span>
-                    </div>
-                  ))}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={img.previewUrl}
+                          alt={`Soal ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(img.id)}
+                          className="absolute top-1 right-1 p-1 rounded-full bg-slate-950/80 hover:bg-red-600 text-white shadow transition cursor-pointer"
+                          title="Hapus gambar"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <span className="absolute bottom-1 left-1 text-[9px] font-medium bg-black/70 px-1.5 py-0.5 rounded text-slate-200 backdrop-blur">
+                          #{idx + 1}
+                        </span>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
               )}
 
@@ -878,46 +952,52 @@ export default function Home() {
               {documents.length > 0 && (
                 <div className="flex flex-col gap-1.5 pt-1">
                   <span className="text-xs font-semibold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
-                    <FolderUp className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                    <FolderUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     <span>Berkas Dilampirkan ({documents.length}):</span>
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {documents.map((doc) => (
-                      <div
-                        key={doc.id}
-                        className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 gap-2.5 shadow-sm"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 text-sm">
-                            {doc.fileType === 'pdf' ? '📕' : doc.fileType.includes('xls') ? '📊' : doc.fileType.includes('doc') ? '📄' : '📝'}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate" title={doc.fileName}>
-                              {doc.fileName}
-                            </p>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                              {doc.loading ? (
-                                <span className="text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                                  <Loader2 className="w-3 h-3 animate-spin" /> Membaca isi berkas...
-                                </span>
-                              ) : doc.error ? (
-                                <span className="text-red-500 dark:text-red-400 truncate">{doc.error}</span>
-                              ) : (
-                                <span className="text-emerald-600 dark:text-emerald-400 font-medium">✓ {doc.wordCount.toLocaleString()} kata terbaca</span>
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeDocument(doc.id)}
-                          className="p-1 rounded-lg text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition shrink-0"
-                          title="Hapus berkas"
+                    <AnimatePresence>
+                      {documents.map((doc) => (
+                        <motion.div
+                          key={doc.id}
+                          initial={{ opacity: 0, scale: 0.9, y: 6 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          transition={{ duration: 0.2 }}
+                          className="flex items-center justify-between p-2.5 rounded-xl bg-white/70 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 gap-2.5 shadow-sm"
                         >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 text-sm border border-blue-200/50 dark:border-blue-900/50">
+                              {doc.fileType === 'pdf' ? '📕' : doc.fileType.includes('xls') ? '📊' : doc.fileType.includes('doc') ? '📄' : '📝'}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate" title={doc.fileName}>
+                                {doc.fileName}
+                              </p>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                {doc.loading ? (
+                                  <span className="text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                                    <Loader2 className="w-3 h-3 animate-spin" /> Membaca isi berkas...
+                                  </span>
+                                ) : doc.error ? (
+                                  <span className="text-red-500 dark:text-red-400 truncate">{doc.error}</span>
+                                ) : (
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">✓ {doc.wordCount.toLocaleString()} kata terbaca</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeDocument(doc.id)}
+                            className="p-1 rounded-lg text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition shrink-0 cursor-pointer"
+                            title="Hapus berkas"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
                   </div>
                 </div>
               )}
@@ -932,9 +1012,39 @@ export default function Home() {
                   value={promptText}
                   onChange={(e) => setPromptText(e.target.value)}
                   placeholder="Ketik soal di sini (tekan Enter untuk baris baru), instruksi dosen, atau catatan modul..."
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl p-3.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 dark:focus:border-slate-600 transition resize-y font-sans leading-relaxed"
+                  className="w-full bg-white/70 dark:bg-slate-950/70 border border-slate-300/80 dark:border-slate-800 rounded-xl p-3.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-500 transition resize-y font-sans leading-relaxed shadow-inner"
                 />
               </div>
+
+              {/* Quick Starter Academic Chips */}
+              {!promptText.trim() && images.length === 0 && documents.length === 0 && (
+                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-2">
+                    <Sparkles className="w-3 h-3 text-blue-500" />
+                    <span>Template Akademik Siap Pakai:</span>
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {STARTER_PROMPTS.map((item, idx) => (
+                      <motion.button
+                        key={idx}
+                        whileHover={{ scale: 1.02, y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        type="button"
+                        onClick={() => setPromptText(item.text)}
+                        className="p-2.5 rounded-xl text-left bg-slate-100/70 hover:bg-white dark:bg-slate-900/60 dark:hover:bg-slate-800/80 border border-slate-200/80 hover:border-blue-400 dark:border-slate-800 dark:hover:border-slate-600 transition-all group cursor-pointer shadow-sm"
+                      >
+                        <div className="text-base mb-1">{item.icon}</div>
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                          {item.label}
+                        </p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                          {item.desc}
+                        </p>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -949,38 +1059,74 @@ export default function Home() {
                 value={promptText}
                 onChange={(e) => setPromptText(e.target.value)}
                 placeholder="Tempel soal diskusi atau kasus kuliah di sini... Tekan Enter bebas untuk baris baru."
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl p-4 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 dark:focus:border-slate-600 transition resize-y font-sans leading-relaxed"
+                className="w-full bg-white/70 dark:bg-slate-950/70 border border-slate-300/80 dark:border-slate-800 rounded-xl p-4 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-500 transition resize-y font-sans leading-relaxed shadow-inner"
               />
+
+              {/* Quick Starter Academic Chips for Diskusi */}
+              {!promptText.trim() && (
+                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-2">
+                    <Sparkles className="w-3 h-3 text-blue-500" />
+                    <span>Template Diskusi & Esai:</span>
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {STARTER_PROMPTS.map((item, idx) => (
+                      <motion.button
+                        key={idx}
+                        whileHover={{ scale: 1.02, y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        type="button"
+                        onClick={() => setPromptText(item.text)}
+                        className="p-2.5 rounded-xl text-left bg-slate-100/70 hover:bg-white dark:bg-slate-900/60 dark:hover:bg-slate-800/80 border border-slate-200/80 hover:border-blue-400 dark:border-slate-800 dark:hover:border-slate-600 transition-all group cursor-pointer shadow-sm"
+                      >
+                        <div className="text-base mb-1">{item.icon}</div>
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                          {item.label}
+                        </p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                          {item.desc}
+                        </p>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* Action Row */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-slate-200 dark:border-slate-800/80">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-slate-200/80 dark:border-slate-800/80">
             <span className="text-[11px] text-slate-500 hidden sm:inline-block">
-              Pintasan keyboard: <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/80 rounded text-slate-700 dark:text-slate-300 text-[10px]">Ctrl + Enter</kbd>
+              Pintasan keyboard: <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/80 rounded text-slate-700 dark:text-slate-300 text-[10px] shadow-sm">Ctrl + Enter</kbd>
             </span>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               {(images.length > 0 || documents.length > 0 || promptText.trim().length > 0) && (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
                   type="button"
                   onClick={() => {
                     setImages([]);
                     setDocuments([]);
                     setPromptText('');
                   }}
-                  className="px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition shrink-0"
+                  className="px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition shrink-0 cursor-pointer shadow-sm"
                 >
                   Reset
-                </button>
+                </motion.button>
               )}
 
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading || (images.length === 0 && documents.length === 0 && !promptText.trim())}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold px-6 py-2.5 rounded-xl shadow transition duration-150 cursor-pointer"
+                className="relative overflow-hidden group flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold px-6 py-2.5 rounded-xl shadow-lg shadow-blue-500/25 transition cursor-pointer"
               >
+                {/* 21st.dev Shimmer Light Sweep */}
+                <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/25 to-transparent -skew-x-12 animate-shimmer-sweep pointer-events-none" />
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -992,391 +1138,486 @@ export default function Home() {
                     <span>Kerjakan Tugas</span>
                   </>
                 )}
-              </button>
+              </motion.button>
             </div>
           </div>
         </div>
 
         {/* Loading Indicator */}
-        {loading && (
-          <div className="p-7 sm:p-9 rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#0e131e] flex flex-col items-center justify-center gap-3 text-center shadow-lg">
-            <Loader2 className="w-7 h-7 text-blue-600 dark:text-slate-300 animate-spin" />
-            <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">{loadingStatus}</p>
-              <p className="text-xs text-slate-500 mt-1">Mengkaji literatur rujukan & menyusun narasi akademik bebas AI-slop...</p>
-            </div>
-          </div>
-        )}
+        <AnimatePresence>
+          {loading && (
+            <motion.div
+              initial={{ opacity: 0, y: 15, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="p-7 sm:p-9 rounded-2xl glass-panel card-glow-border flex flex-col items-center justify-center gap-3.5 text-center shadow-2xl"
+            >
+              <div className="relative flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full border-2 border-blue-500/20 border-t-blue-500 animate-spin" />
+                <Sparkles className="w-5 h-5 text-blue-500 absolute inset-0 m-auto animate-pulse" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">{loadingStatus}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Mengkaji literatur rujukan & menyusun naskah akademik bebas AI-slop...</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Result Area — Academic Manuscript Dossier */}
-        {answer && !loading && (
-          <div
-            ref={resultRef}
-            className="bg-white dark:bg-[#0e131e] border border-slate-200 dark:border-white/[0.08] rounded-2xl p-5 sm:p-8 shadow-2xl flex flex-col gap-5 animate-fadeIn"
-          >
-            {/* Header of Answer Card */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800/80">
-              <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-400/20" />
-                <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">
-                  Naskah Hasil Analisis
-                </h2>
-                {usedEngine && (
-                  <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 px-2 py-0.5 rounded font-medium">
-                    {usedEngine}
+        <AnimatePresence>
+          {answer && !loading && (
+            <motion.div
+              ref={resultRef}
+              initial={{ opacity: 0, y: 24, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="glass-panel card-glow-border rounded-2xl p-5 sm:p-8 shadow-2xl flex flex-col gap-5"
+            >
+              {/* Header of Answer Card */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/80 dark:border-slate-800/80">
+                <div className="flex items-center gap-2.5">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
                   </span>
-                )}
+                  <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                    Naskah Hasil Analisis
+                  </h2>
+                  {usedEngine && (
+                    <span className="text-[10px] font-mono text-slate-600 dark:text-slate-300 bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 px-2 py-0.5 rounded-full font-medium shadow-sm">
+                      {usedEngine}
+                    </span>
+                  )}
+                </div>
+
+                {/* Copy & Quick Actions */}
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.95 }}
+                    type="button"
+                    onClick={handleContinueSolve}
+                    disabled={continuing || loading}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition cursor-pointer disabled:opacity-50"
+                    title="Lanjutkan pengerjaan nomor soal berikutnya"
+                  >
+                    {continuing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FastForward className="w-3.5 h-3.5" />}
+                    <span>{continuing ? 'Melanjutkan...' : 'Lanjutkan Soal'}</span>
+                  </motion.button>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.95 }}
+                    type="button"
+                    onClick={handleCopy}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer shadow-sm ${
+                      copied
+                        ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-600/50 text-emerald-700 dark:text-emerald-300'
+                        : 'bg-white hover:bg-slate-100 dark:bg-slate-800/90 dark:hover:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                    }`}
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />}
+                    <span>{copied ? 'Tersalin' : 'Salin Teks Bersih'}</span>
+                  </motion.button>
+                </div>
               </div>
 
-              {/* Copy & Quick Actions */}
-              <div className="flex items-center gap-2">
-                <button
+              {/* Integrated Bento Export Hub (21st.dev Style) */}
+              <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800/80 flex flex-col gap-3 shadow-inner">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <FileDown className="w-4 h-4 text-blue-500" />
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-wide">
+                      Ekspor Dokumen Siap Kumpul:
+                    </span>
+                  </div>
+                  <div className="flex-1 sm:max-w-xs">
+                    <input
+                      type="text"
+                      value={customFilename}
+                      onChange={(e) => setCustomFilename(e.target.value)}
+                      placeholder="Nama berkas (contoh: Tugas_Manajemen_Sesi4)"
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* 4 Bento Format Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -1 }}
+                    whileTap={{ scale: 0.97 }}
+                    type="button"
+                    onClick={() => handleFileDownload('docx')}
+                    disabled={fileDownloading}
+                    className="flex flex-col p-2.5 rounded-xl bg-blue-50/60 hover:bg-blue-50 dark:bg-blue-950/30 dark:hover:bg-blue-950/60 border border-blue-200/70 dark:border-blue-800/50 text-left transition cursor-pointer group shadow-sm disabled:opacity-50"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-base">📄</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 bg-blue-100/80 dark:bg-blue-900/60 px-1.5 py-0.5 rounded">.docx</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                      Microsoft Word
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                      Format naskah & sitasi
+                    </p>
+                  </motion.button>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -1 }}
+                    whileTap={{ scale: 0.97 }}
+                    type="button"
+                    onClick={() => handleFileDownload('pdf')}
+                    disabled={fileDownloading}
+                    className="flex flex-col p-2.5 rounded-xl bg-rose-50/60 hover:bg-rose-50 dark:bg-red-950/30 dark:hover:bg-red-950/60 border border-rose-200/70 dark:border-red-800/50 text-left transition cursor-pointer group shadow-sm disabled:opacity-50"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-base">📕</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-red-300 bg-rose-100/80 dark:bg-red-900/60 px-1.5 py-0.5 rounded">.pdf</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-rose-600 dark:group-hover:text-red-400 transition">
+                      PDF Cetak
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                      Layout resmi siap cetak
+                    </p>
+                  </motion.button>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -1 }}
+                    whileTap={{ scale: 0.97 }}
+                    type="button"
+                    onClick={() => handleFileDownload('xlsx')}
+                    disabled={fileDownloading}
+                    className="flex flex-col p-2.5 rounded-xl bg-emerald-50/60 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/60 border border-emerald-200/70 dark:border-emerald-800/50 text-left transition cursor-pointer group shadow-sm disabled:opacity-50"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-base">📊</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded">.xlsx</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                      Excel Spreadsheet
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                      Tabel data & kalkulasi
+                    </p>
+                  </motion.button>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -1 }}
+                    whileTap={{ scale: 0.97 }}
+                    type="button"
+                    onClick={() => handleFileDownload('pptx')}
+                    disabled={fileDownloading}
+                    className="flex flex-col p-2.5 rounded-xl bg-amber-50/60 hover:bg-amber-50 dark:bg-amber-950/30 dark:hover:bg-amber-950/60 border border-amber-200/70 dark:border-amber-800/50 text-left transition cursor-pointer group shadow-sm disabled:opacity-50"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-base">📑</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-900/60 px-1.5 py-0.5 rounded">.pptx</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition">
+                      Slide Presentasi
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                      Slide PowerPoint siap tayang
+                    </p>
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Display Submitted Question/Image/Document as Prompt Card */}
+              {submittedPrompt && (submittedPrompt.text || submittedPrompt.images.length > 0 || (submittedPrompt.documents && submittedPrompt.documents.length > 0)) && (
+                <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800/80 flex flex-col gap-2">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Berkas & Pertanyaan Rujukan:
+                  </span>
+
+                  {/* Submitted Documents Badges */}
+                  {submittedPrompt.documents && submittedPrompt.documents.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-0.5">
+                      {submittedPrompt.documents.map((doc, i) => (
+                        <span
+                          key={doc.id || i}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-300 font-medium shadow-sm"
+                        >
+                          <span>{doc.fileType === 'pdf' ? '📕' : doc.fileType.includes('xls') ? '📊' : doc.fileType.includes('doc') ? '📄' : '📝'}</span>
+                          <span className="truncate max-w-[200px]">{doc.fileName}</span>
+                          <span className="text-[10px] text-slate-500">({doc.wordCount.toLocaleString()} kata)</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Submitted Images */}
+                  {submittedPrompt.images.length > 0 && (
+                    <div className="flex gap-2.5 flex-wrap pt-0.5">
+                      {submittedPrompt.images.map((img, i) => (
+                        <a
+                          key={img.id || i}
+                          href={img.previewUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="group relative block rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 transition shadow bg-slate-100 dark:bg-black/40"
+                          title="Lihat ukuran asli"
+                        >
+                          <img
+                            src={img.previewUrl}
+                            alt={`Soal #${i + 1}`}
+                            className="max-h-28 object-contain rounded p-1"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+
+                  {submittedPrompt.text && (
+                    <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed pt-1">
+                      {submittedPrompt.text}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Answer Content — Clean Academic Typography */}
+              <div className="text-slate-900 dark:text-slate-200 text-sm sm:text-base leading-relaxed font-sans selection:bg-blue-600 selection:text-white dark:selection:bg-slate-700 dark:selection:text-white space-y-3 pt-2 break-words overflow-x-auto">
+                <ReactMarkdown
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                  components={{
+                    h1: ({ ...props }) => (
+                      <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mt-5 mb-2.5 border-b border-slate-200 dark:border-slate-800 pb-2" {...props} />
+                    ),
+                    h2: ({ ...props }) => (
+                      <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 mt-4 mb-2" {...props} />
+                    ),
+                    h3: ({ ...props }) => (
+                      <h3 className="text-sm sm:text-base font-semibold text-blue-700 dark:text-blue-300 mt-4 mb-2 tracking-wide" {...props} />
+                    ),
+                    p: ({ ...props }) => (
+                      <p className="mb-3 text-slate-800 dark:text-slate-200 leading-relaxed font-normal" {...props} />
+                    ),
+                    ul: ({ ...props }) => (
+                      <ul className="list-disc list-outside pl-5 mb-3.5 space-y-2 text-slate-800 dark:text-slate-200" {...props} />
+                    ),
+                    ol: ({ ...props }) => (
+                      <ol className="list-decimal list-outside pl-5 mb-3.5 space-y-2 text-slate-800 dark:text-slate-200" {...props} />
+                    ),
+                    li: ({ ...props }) => (
+                      <li className="text-slate-800 dark:text-slate-200 leading-relaxed pl-1" {...props} />
+                    ),
+                    hr: ({ ...props }) => (
+                      <hr className="my-5 border-slate-200 dark:border-slate-800/80" {...props} />
+                    ),
+                    strong: ({ ...props }) => (
+                      <strong className="font-bold text-slate-900 dark:text-white" {...props} />
+                    ),
+                    em: ({ ...props }) => (
+                      <em className="italic text-slate-700 dark:text-slate-300" {...props} />
+                    ),
+                    blockquote: ({ ...props }) => (
+                      <blockquote className="border-l-4 border-blue-600 dark:border-blue-500 pl-3.5 py-1.5 my-3 bg-blue-50/60 dark:bg-blue-950/30 text-slate-800 dark:text-slate-300 italic rounded-r" {...props} />
+                    ),
+                    table: ({ ...props }) => (
+                      <div className="overflow-x-auto my-3">
+                        <table className="w-full text-left border-collapse border border-slate-200 dark:border-slate-800 rounded-lg text-xs sm:text-sm" {...props} />
+                      </div>
+                    ),
+                    th: ({ ...props }) => (
+                      <th className="border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 px-3 py-2 font-bold text-slate-900 dark:text-slate-200" {...props} />
+                    ),
+                    td: ({ ...props }) => (
+                      <td className="border border-slate-200 dark:border-slate-800 px-3 py-2 text-slate-800 dark:text-slate-300" {...props} />
+                    ),
+                  }}
+                >
+                  {answer}
+                </ReactMarkdown>
+              </div>
+
+              {/* Bottom Continuation Callout Bar */}
+              <div className="mt-4 p-3.5 sm:p-4 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 shrink-0">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">
+                      Ingin melanjutkan pengerjaan nomor soal berikutnya?
+                    </p>
+                    <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                      Klik tombol untuk melanjutkan nomor soal yang tersisa secara otomatis.
+                    </p>
+                  </div>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
                   type="button"
                   onClick={handleContinueSolve}
                   disabled={continuing || loading}
-                  className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white border border-blue-600 shadow-sm transition cursor-pointer disabled:opacity-50"
-                  title="Lanjutkan pengerjaan nomor soal berikutnya"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm cursor-pointer shrink-0 disabled:opacity-50"
                 >
                   {continuing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FastForward className="w-3.5 h-3.5" />}
-                  <span>{continuing ? 'Melanjutkan...' : 'Lanjutkan Soal'}</span>
-                </button>
+                  <span>{continuing ? 'Sedang Melanjutkan...' : 'Lanjutkan Soal Berikutnya'}</span>
+                </motion.button>
+              </div>
 
+              {/* Footer Status */}
+              <div className="mt-4 pt-3 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                  <span>Arsip: Tersimpan di database lokal</span>
+                </span>
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
-                    copied
-                      ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-600/50 text-emerald-700 dark:text-emerald-300'
-                      : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-                  }`}
+                  className="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition cursor-pointer"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />}
-                  <span>{copied ? 'Tersalin' : 'Salin Teks Bersih'}</span>
+                  Salin lagi
                 </button>
               </div>
-            </div>
-
-            {/* Integrated Export Toolbar */}
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <input
-                  type="text"
-                  value={customFilename}
-                  onChange={(e) => setCustomFilename(e.target.value)}
-                  placeholder="Nama berkas unduhan (contoh: Tugas_Manajemen_Sesi4)"
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 dark:focus:border-slate-600"
-                />
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleFileDownload('docx')}
-                  disabled={fileDownloading}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:border-blue-700/40 dark:text-blue-200 text-xs font-semibold transition cursor-pointer"
-                  title="Unduh format Microsoft Word"
-                >
-                  <FileDown className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                  <span>Word (.docx)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFileDownload('pdf')}
-                  disabled={fileDownloading}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:border-red-700/40 dark:text-red-200 text-xs font-semibold transition cursor-pointer"
-                  title="Unduh format PDF Cetak"
-                >
-                  <FileDown className="w-3.5 h-3.5 text-rose-600 dark:text-red-400" />
-                  <span>PDF (.pdf)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFileDownload('xlsx')}
-                  disabled={fileDownloading}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:border-emerald-700/40 dark:text-emerald-200 text-xs font-semibold transition cursor-pointer"
-                  title="Unduh format Excel Spreadsheet"
-                >
-                  <FileDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Excel (.xlsx)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFileDownload('pptx')}
-                  disabled={fileDownloading}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:border-amber-700/40 dark:text-amber-200 text-xs font-semibold transition cursor-pointer"
-                  title="Unduh format Slide PowerPoint"
-                >
-                  <FileDown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  <span>Slide (.pptx)</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Display Submitted Question/Image/Document as Prompt Card */}
-            {submittedPrompt && (submittedPrompt.text || submittedPrompt.images.length > 0 || (submittedPrompt.documents && submittedPrompt.documents.length > 0)) && (
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/80 flex flex-col gap-2">
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Berkas & Pertanyaan Rujukan:
-                </span>
-
-                {/* Submitted Documents Badges */}
-                {submittedPrompt.documents && submittedPrompt.documents.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-0.5">
-                    {submittedPrompt.documents.map((doc, i) => (
-                      <span
-                        key={doc.id || i}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-300 font-medium"
-                      >
-                        <span>{doc.fileType === 'pdf' ? '📕' : doc.fileType.includes('xls') ? '📊' : doc.fileType.includes('doc') ? '📄' : '📝'}</span>
-                        <span className="truncate max-w-[200px]">{doc.fileName}</span>
-                        <span className="text-[10px] text-slate-500">({doc.wordCount.toLocaleString()} kata)</span>
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Submitted Images */}
-                {submittedPrompt.images.length > 0 && (
-                  <div className="flex gap-2.5 flex-wrap pt-0.5">
-                    {submittedPrompt.images.map((img, i) => (
-                      <a
-                        key={img.id || i}
-                        href={img.previewUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="group relative block rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 transition shadow bg-slate-100 dark:bg-black/40"
-                        title="Lihat ukuran asli"
-                      >
-                        <img
-                          src={img.previewUrl}
-                          alt={`Soal #${i + 1}`}
-                          className="max-h-28 object-contain rounded p-1"
-                        />
-                      </a>
-                    ))}
-                  </div>
-                )}
-
-                {submittedPrompt.text && (
-                  <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed pt-1">
-                    {submittedPrompt.text}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Answer Content — Clean Academic Typography */}
-            <div className="text-slate-900 dark:text-slate-200 text-sm sm:text-base leading-relaxed font-sans selection:bg-blue-600 selection:text-white dark:selection:bg-slate-700 dark:selection:text-white space-y-3 pt-2 break-words overflow-x-auto">
-              <ReactMarkdown
-                remarkPlugins={[remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-                components={{
-                  h1: ({ ...props }) => (
-                    <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mt-5 mb-2.5 border-b border-slate-200 dark:border-slate-800 pb-2" {...props} />
-                  ),
-                  h2: ({ ...props }) => (
-                    <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 mt-4 mb-2" {...props} />
-                  ),
-                  h3: ({ ...props }) => (
-                    <h3 className="text-sm sm:text-base font-semibold text-blue-700 dark:text-blue-300 mt-4 mb-2 tracking-wide" {...props} />
-                  ),
-                  p: ({ ...props }) => (
-                    <p className="mb-3 text-slate-800 dark:text-slate-200 leading-relaxed font-normal" {...props} />
-                  ),
-                  ul: ({ ...props }) => (
-                    <ul className="list-disc list-outside pl-5 mb-3.5 space-y-2 text-slate-800 dark:text-slate-200" {...props} />
-                  ),
-                  ol: ({ ...props }) => (
-                    <ol className="list-decimal list-outside pl-5 mb-3.5 space-y-2 text-slate-800 dark:text-slate-200" {...props} />
-                  ),
-                  li: ({ ...props }) => (
-                    <li className="text-slate-800 dark:text-slate-200 leading-relaxed pl-1" {...props} />
-                  ),
-                  hr: ({ ...props }) => (
-                    <hr className="my-5 border-slate-200 dark:border-slate-800/80" {...props} />
-                  ),
-                  strong: ({ ...props }) => (
-                    <strong className="font-bold text-slate-900 dark:text-white" {...props} />
-                  ),
-                  em: ({ ...props }) => (
-                    <em className="italic text-slate-700 dark:text-slate-300" {...props} />
-                  ),
-                  blockquote: ({ ...props }) => (
-                    <blockquote className="border-l-4 border-blue-600 dark:border-slate-600 pl-3.5 py-1.5 my-3 bg-blue-50/60 dark:bg-slate-900/40 text-slate-800 dark:text-slate-300 italic rounded-r" {...props} />
-                  ),
-                  table: ({ ...props }) => (
-                    <div className="overflow-x-auto my-3">
-                      <table className="w-full text-left border-collapse border border-slate-200 dark:border-slate-800 rounded-lg text-xs sm:text-sm" {...props} />
-                    </div>
-                  ),
-                  th: ({ ...props }) => (
-                    <th className="border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 px-3 py-2 font-bold text-slate-900 dark:text-slate-200" {...props} />
-                  ),
-                  td: ({ ...props }) => (
-                    <td className="border border-slate-200 dark:border-slate-800 px-3 py-2 text-slate-800 dark:text-slate-300" {...props} />
-                  ),
-                }}
-              >
-                {answer}
-              </ReactMarkdown>
-            </div>
-
-            {/* Bottom Continuation Callout Bar */}
-            <div className="mt-4 p-3.5 sm:p-4 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 shrink-0">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">
-                    Ingin melanjutkan pengerjaan soal berikutnya?
-                  </p>
-                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-                    Klik tombol untuk melanjutkan nomor soal yang tersisa secara otomatis.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleContinueSolve}
-                disabled={continuing || loading}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm cursor-pointer shrink-0 disabled:opacity-50"
-              >
-                {continuing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FastForward className="w-3.5 h-3.5" />}
-                <span>{continuing ? 'Sedang Melanjutkan...' : 'Lanjutkan Soal Berikutnya'}</span>
-              </button>
-            </div>
-
-            {/* Footer Status */}
-            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
-              <span>Arsip: Tersimpan di database lokal</span>
-              <button
-                onClick={handleCopy}
-                className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 font-medium transition cursor-pointer"
-              >
-                Salin lagi
-              </button>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
-      {/* History Drawer */}
-      {showHistory && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-md bg-white dark:bg-[#0d1322] h-full border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col p-4 sm:p-6 overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 mb-4">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <h3 className="font-bold text-base text-slate-900 dark:text-white">Riwayat Tugas</h3>
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                  {history.length}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                {history.length > 0 && (
+      {/* History Drawer — Animated Spring Slide-in */}
+      <AnimatePresence>
+        {showHistory && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex justify-end bg-slate-900/60 dark:bg-black/70 backdrop-blur-md"
+            onClick={() => setShowHistory(false)}
+          >
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-white/95 dark:bg-[#0c1017]/95 backdrop-blur-xl h-full border-l border-slate-200 dark:border-white/[0.08] shadow-2xl flex flex-col p-4 sm:p-6 overflow-y-auto"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 mb-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">Riwayat Tugas</h3>
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/50">
+                    {history.length}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {history.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearAllHistory}
+                      title="Hapus semua riwayat"
+                      className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 text-xs flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline text-[11px] font-medium">Hapus Semua</span>
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={handleClearAllHistory}
-                    title="Hapus semua riwayat"
-                    className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 text-xs flex items-center gap-1 transition cursor-pointer"
+                    onClick={fetchHistory}
+                    disabled={historyLoading}
+                    title="Segarkan riwayat"
+                    className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline text-[11px] font-medium">Hapus Semua</span>
+                    <RefreshCw className={`w-4 h-4 ${historyLoading ? 'animate-spin text-blue-500' : ''}`} />
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={fetchHistory}
-                  disabled={historyLoading}
-                  title="Segarkan riwayat"
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer"
-                >
-                  <RefreshCw className={`w-4 h-4 ${historyLoading ? 'animate-spin text-blue-500' : ''}`} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowHistory(false)}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {history.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center text-slate-500 text-xs">
-                <Clock className="w-8 h-8 mb-2 opacity-50" />
-                <p>Belum ada riwayat tugas tersimpan.</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {history.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => {
-                      setAnswer(item.answer_text);
-                      setUsedEngine(item.course_category || 'Tersimpan');
-                      setSubmittedPrompt({
-                        text: item.prompt_text,
-                        images: (item.image_urls || []).map((url, i) => ({
-                          id: `hist_${i}`,
-                          name: `Gambar #${i + 1}`,
-                          mimeType: 'image/png',
-                          base64: '',
-                          previewUrl: url,
-                        })),
-                        documents: [],
-                      });
-                      setShowHistory(false);
-                      setTimeout(() => {
-                        resultRef.current?.scrollIntoView({ behavior: 'smooth' });
-                      }, 100);
-                    }}
-                    className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900/60 dark:hover:bg-slate-800/80 dark:hover:border-slate-700 transition cursor-pointer flex flex-col gap-1.5 group relative shadow-sm"
+                  <button
+                    type="button"
+                    onClick={() => setShowHistory(false)}
+                    className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
-                        {item.type || 'Tugas'}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                          {new Date(item.created_at).toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteHistory(item.id);
-                          }}
-                          title="Hapus riwayat ini"
-                          className="p-1 rounded text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 hover:bg-red-500/10 transition cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-300 transition">
-                      {item.title || item.prompt_text || 'Tugas Kuliah'}
-                    </p>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2">
-                      {item.answer_text}
-                    </p>
-                  </div>
-                ))}
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+
+              {history.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center text-slate-500 text-xs">
+                  <Clock className="w-8 h-8 mb-2 opacity-50 text-slate-400" />
+                  <p>Belum ada riwayat tugas tersimpan.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {history.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      whileHover={{ scale: 1.01, y: -1 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={() => {
+                        setAnswer(item.answer_text);
+                        setUsedEngine(item.course_category || 'Tersimpan');
+                        setSubmittedPrompt({
+                          text: item.prompt_text,
+                          images: (item.image_urls || []).map((url, i) => ({
+                            id: `hist_${i}`,
+                            name: `Gambar #${i + 1}`,
+                            mimeType: 'image/png',
+                            base64: '',
+                            previewUrl: url,
+                          })),
+                          documents: [],
+                        });
+                        setShowHistory(false);
+                        setTimeout(() => {
+                          resultRef.current?.scrollIntoView({ behavior: 'smooth' });
+                        }, 100);
+                      }}
+                      className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white/80 hover:bg-white dark:bg-slate-900/60 dark:hover:bg-slate-800/80 dark:hover:border-slate-700 transition cursor-pointer flex flex-col gap-1.5 group relative shadow-sm"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
+                          {item.type || 'Tugas'}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {new Date(item.created_at).toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteHistory(item.id);
+                            }}
+                            title="Hapus riwayat ini"
+                            className="p-1 rounded text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 hover:bg-red-500/10 transition cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-300 transition">
+                        {item.title || item.prompt_text || 'Tugas Kuliah'}
+                      </p>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2">
+                        {item.answer_text}
+                      </p>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-800/80 py-4 px-6 text-center text-xs text-slate-500 dark:text-slate-400">
-        Portal Tugas Antigravity &bull; Siap Digunakan Lintas Perangkat Tanpa Login
+      <footer className="border-t border-slate-200/80 dark:border-white/[0.08] py-4 px-6 text-center text-xs text-slate-500 dark:text-slate-400 backdrop-blur-md">
+        Portal Tugas Antigravity &bull; Studio Pengerjaan Tugas Mandiri Bebas AI-Slop
       </footer>
     </div>
   );

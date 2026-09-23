@@ -21,8 +21,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" className="dark" suppressHydrationWarning>
-      <body className="antialiased bg-slate-50 dark:bg-[#080b11] text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-150">
-        {children}
+      <body className="antialiased bg-slate-50 dark:bg-[#080b11] text-slate-900 dark:text-slate-100 min-h-screen relative selection:bg-blue-500/20 selection:text-blue-400">
+        {/* Living Ambient Mesh & Aurora Background */}
+        <div className="bg-ambient-mesh" aria-hidden="true">
+          <div className="aurora-orb-1" />
+          <div className="aurora-orb-2" />
+          <div className="aurora-orb-3" />
+        </div>
+        {/* Subtle Architectural Grid Overlay */}
+        <div className="bg-grid-overlay" aria-hidden="true" />
+        {/* Main Content Layer */}
+        <div className="relative z-10 min-h-screen flex flex-col">
+          {children}
+        </div>
       </body>
     </html>
   );
