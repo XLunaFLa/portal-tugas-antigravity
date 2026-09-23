@@ -1,12 +1,12 @@
-// Portal Tugas — hanya menggunakan 9Router Antigravity (tidak ada Google API langsung)
-export const ACTIVE_TUNNEL_URL = 'https://pest-forwarding-personalized-much.trycloudflare.com/v1';
+// Portal Tugas — hanya menggunakan 9Router Antigravity di VPS (24/7 online)
+export const ACTIVE_TUNNEL_URL = 'https://reason-priced-extensive-novels.trycloudflare.com/v1';
 export const LOCAL_URL = 'http://127.0.0.1:20129/v1';
 
 export function getEffectiveBaseUrl(): string {
   if (process.env.VERCEL) {
     const envUrl = process.env.NINE_ROUTER_BASE_URL;
-    // Abaikan URL tunnel lama yang sudah expired di Vercel Dashboard
-    if (envUrl && !envUrl.includes('freelance-officers-differences-really')) {
+    // Gunakan ACTIVE_TUNNEL_URL jika envUrl kosong atau berisi tunnel lama PC lokal
+    if (envUrl && !envUrl.includes('freelance-officers-differences-really') && !envUrl.includes('pest-forwarding-personalized-much')) {
       return envUrl;
     }
     return ACTIVE_TUNNEL_URL;
