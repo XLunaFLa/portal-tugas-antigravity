@@ -1,12 +1,12 @@
-// Portal Tugas — hanya menggunakan 9Router Antigravity di VPS (24/7 online)
-export const ACTIVE_TUNNEL_URL = 'https://reason-priced-extensive-novels.trycloudflare.com/v1';
-export const LOCAL_URL = 'http://127.0.0.1:20129/v1';
+// Portal Tugas — menggunakan 9Router Antigravity via Cloudflare Tunnel aktif
+export const ACTIVE_TUNNEL_URL = 'https://tea-solaris-florence-thy.trycloudflare.com/v1';
+export const LOCAL_URL = 'http://127.0.0.1:20128/v1';
 
 export function getEffectiveBaseUrl(): string {
   if (process.env.VERCEL) {
     const envUrl = process.env.NINE_ROUTER_BASE_URL;
-    // Gunakan ACTIVE_TUNNEL_URL jika envUrl kosong atau berisi tunnel lama PC lokal
-    if (envUrl && !envUrl.includes('freelance-officers-differences-really') && !envUrl.includes('pest-forwarding-personalized-much')) {
+    // Abaikan URL trycloudflare lama yang ada di Vercel Dashboard dan selalu utamakan ACTIVE_TUNNEL_URL
+    if (envUrl && !envUrl.includes('trycloudflare.com')) {
       return envUrl;
     }
     return ACTIVE_TUNNEL_URL;
